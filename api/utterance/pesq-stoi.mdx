@@ -1,0 +1,225 @@
+---
+title: PESQ & STOI
+description: Perceptual Evaluation of Speech Quality and Short-Time Objective Intelligibility metrics
+---
+
+PESQ and STOI are reference-based metrics for evaluating speech quality and intelligibility. Both require a clean reference signal for comparison.
+
+## PESQ (Perceptual Evaluation of Speech Quality)
+
+<CodeGroup>
+```python Function Signature
+pesq_metric(
+    pred_x,
+    gt_x,
+    fs
+)
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField path="pred_x" type="numpy.ndarray" required>
+  Predicted/degraded audio signal (1D array)
+</ParamField>
+
+<ParamField path="gt_x" type="numpy.ndarray" required>
+  Ground truth/reference audio signal (1D array)
+</ParamField>
+
+<ParamField path="fs" type="int" required>
+  Sampling rate in Hz. Supported rates:
+  - 8000 Hz: Narrowband (NB) mode
+  - 16000 Hz: Wideband (WB) mode
+  - Other rates: Automatically resampled to 8 kHz or 16 kHz
+</ParamField>
+
+### Returns
+
+<ResponseField name="pesq" type="float">
+  PESQ score ranging from -0.5 to 4.5 (higher is better)
+  - Returns 0.0 if calculation fails (e.g., due to silence)
+</ResponseField>
+
+### Usage Example
+
+```python
+import numpy as np
+from versa import pesq_metric
+
+# Load audio signals
+reference = np.random.random(16000)  # Replace with actual reference
+degraded = np.random.random(16000)   # Replace with actual degraded audio
+fs = 16000
+
+# Calculate PESQ
+result = pesq_metric(
+    pred_x=degraded,
+    gt_x=reference,
+    fs=fs
+)
+
+print(f"PESQ Score: {result['pesq']:.2f}")
+```
+
+## STOI (Short-Time Objective Intelligibility)
+
+<CodeGroup>
+```python Function Signature
+stoi_metric(
+    pred_x,
+    gt_x,
+    fs
+)
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField path="pred_x" type="numpy.ndarray" required>
+  Predicted/degraded audio signal (1D array)
+</ParamField>
+
+<ParamField path="gt_x" type="numpy.ndarray" required>
+  Ground truth/reference audio signal (1D array)
+</ParamField>
+
+<ParamField path="fs" type="int" required>
+  Sampling rate in Hz (any standard audio sampling rate)
+</ParamField>
+
+### Returns
+
+<ResponseField name="stoi" type="float">
+  STOI score ranging from 0 to 1 (higher is better)
+  - Represents speech intelligibility correlation
+</ResponseField>
+
+### Usage Example
+
+```python
+import numpy as np
+from versa import stoi_metric
+
+# Load audio signals
+reference = np.random.random(16000)  # Replace with actual reference
+degraded = np.random.random(16000)   # Replace with actual degraded audio
+fs = 16000
+
+# Calculate STOI
+result = stoi_metric(
+    pred_x=degraded,
+    gt_x=reference,
+    fs=fs
+)
+
+print(f"STOI Score: {result['stoi']:.3f}")
+```
+
+## Extended STOI (ESTOI)
+
+<CodeGroup>
+```python Function Signature
+estoi_metric(
+    pred_x,
+    gt_x,
+    fs
+)
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField path="pred_x" type="numpy.ndarray" required>
+  Predicted/degraded audio signal (1D array)
+</ParamField>
+
+<ParamField path="gt_x" type="numpy.ndarray" required>
+  Ground truth/reference audio signal (1D array)
+</ParamField>
+
+<ParamField path="fs" type="int" required>
+  Sampling rate in Hz (any standard audio sampling rate)
+</ParamField>
+
+### Returns
+
+<ResponseField name="estoi" type="float">
+  Extended STOI score ranging from 0 to 1 (higher is better)
+  - Better performance with temporal modulations
+</ResponseField>
+
+### Usage Example
+
+```python
+import numpy as np
+from versa import estoi_metric
+
+# Load audio signals
+reference = np.random.random(16000)  # Replace with actual reference
+degraded = np.random.random(16000)   # Replace with actual degraded audio
+fs = 16000
+
+# Calculate Extended STOI
+result = estoi_metric(
+    pred_x=degraded,
+    gt_x=reference,
+    fs=fs
+)
+
+print(f"ESTOI Score: {result['estoi']:.3f}")
+```
+
+## Installation
+
+<CodeGroup>
+```bash PESQ
+pip install pesq
+```
+
+```bash STOI/ESTOI
+pip install pystoi
+```
+</CodeGroup>
+
+## Metric Comparison
+
+| Metric | Range | Focus | Best For |
+|--------|-------|-------|----------|
+| PESQ | -0.5 to 4.5 | Perceptual quality | VoIP, codec evaluation |
+| STOI | 0 to 1 | Intelligibility | Speech enhancement, hearing aids |
+| ESTOI | 0 to 1 | Extended intelligibility | Modulated noise scenarios |
+
+## Technical Notes
+
+<Note>
+  **Length Handling**: If signal lengths differ, both metrics automatically use the shorter length for comparison.
+</Note>
+
+<Note>
+  **PESQ Modes**: 
+  - **Narrowband (8 kHz)**: For telephone bandwidth (300-3400 Hz)
+  - **Wideband (16 kHz)**: For modern VoIP and codecs
+</Note>
+
+<Note>
+  **STOI vs ESTOI**: Extended STOI provides better correlation with intelligibility in scenarios with temporal envelope modulations.
+</Note>
+
+<Warning>
+  **PESQ Error Handling**: Returns 0.0 if calculation fails, typically due to silence or invalid audio. Always check for warnings in logs.
+</Warning>
+
+## Use Cases
+
+### PESQ
+- VoIP quality assessment
+- Audio codec evaluation
+- Network transmission quality
+- Speech enhancement validation
+
+### STOI/ESTOI
+- Speech intelligibility prediction
+- Hearing aid performance
+- Noise suppression evaluation
+- Room acoustics assessment

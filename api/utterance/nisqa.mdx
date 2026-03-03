@@ -1,0 +1,158 @@
+---
+title: NISQA
+description: Non-Intrusive Speech Quality Assessment for perceptual quality evaluation
+---
+
+NISQA (Non-Intrusive Speech Quality Assessment) provides deep learning-based speech quality prediction without requiring a reference signal. It can predict MOS scores and multiple perceptual dimensions.
+
+## Model Setup
+
+<CodeGroup>
+```python Function Signature
+nisqa_model_setup(
+    nisqa_model_path=None,
+    use_gpu=False
+)
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField path="nisqa_model_path" type="str" required>
+  Path to the NISQA model checkpoint (.tar file). The checkpoint must contain:
+  - Model state dictionary
+  - Model arguments and configuration
+  - Architecture specification (NISQA, NISQA_DIM, or NISQA_DE)
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="false">
+  Whether to use GPU for computation. Raises RuntimeError if GPU is not available but use_gpu=True
+</ParamField>
+
+### Returns
+
+<ResponseField name="model" type="NISQA model">
+  Loaded NISQA model with the following attributes:
+  - `model.args` - Model configuration arguments
+  - `model.device` - Device ("cuda" or "cpu")
+  - Model can be NISQA (basic), NISQA_DIM (dimensional), or NISQA_DE (double-ended)
+</ResponseField>
+
+### Raises
+
+- `ValueError`: If model path is not provided or checkpoint is invalid
+- `RuntimeError`: If GPU requested but not available
+- `NotImplementedError`: If model type is not recognized
+
+## Metric Calculation
+
+<CodeGroup>
+```python Function Signature
+nisqa_metric(
+    nisqa_model,
+    pred_x,
+    fs
+)
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField path="nisqa_model" type="NISQA model" required>
+  The NISQA model loaded from `nisqa_model_setup()`
+</ParamField>
+
+<ParamField path="pred_x" type="numpy.ndarray" required>
+  Audio signal to evaluate (1D array)
+</ParamField>
+
+<ParamField path="fs" type="int" required>
+  Sampling rate of the input audio in Hz. Audio will be resampled to 48 kHz if needed
+</ParamField>
+
+### Returns
+
+<ResponseField name="metrics" type="dict">
+  Dictionary containing NISQA scores with keys prefixed by `nisqa_`. Typical metrics include:
+  - `nisqa_mos` - Overall MOS prediction
+  - `nisqa_noi` - Noisiness dimension (if NISQA_DIM model)
+  - `nisqa_dis` - Distortion dimension (if NISQA_DIM model)
+  - `nisqa_col` - Coloration dimension (if NISQA_DIM model)
+  - `nisqa_loud` - Loudness dimension (if NISQA_DIM model)
+</ResponseField>
+
+## Usage Example
+
+```python
+import numpy as np
+from versa import nisqa_model_setup, nisqa_metric
+
+# Setup NISQA model
+nisqa_model = nisqa_model_setup(
+    nisqa_model_path="path/to/nisqa.tar",
+    use_gpu=True
+)
+
+# Load your audio
+audio = np.random.random(16000)  # Replace with actual audio
+fs = 16000
+
+# Calculate NISQA scores
+scores = nisqa_metric(
+    nisqa_model=nisqa_model,
+    pred_x=audio,
+    fs=fs
+)
+
+print(f"NISQA MOS: {scores['nisqa_mos']:.2f}")
+if 'nisqa_noi' in scores:
+    print(f"Noisiness: {scores['nisqa_noi']:.2f}")
+    print(f"Distortion: {scores['nisqa_dis']:.2f}")
+    print(f"Coloration: {scores['nisqa_col']:.2f}")
+    print(f"Loudness: {scores['nisqa_loud']:.2f}")
+```
+
+## Model Variants
+
+### NISQA (Basic)
+Predicts overall MOS score for speech quality.
+
+### NISQA_DIM (Dimensional)
+Predicts MOS along with perceptual dimensions:
+- **Noisiness**: Amount of background noise
+- **Distortion**: Signal distortion level
+- **Coloration**: Frequency response coloration
+- **Loudness**: Perceived loudness
+
+### NISQA_DE (Double-Ended)
+Double-ended variant that can use reference signal if available.
+
+## Technical Details
+
+<Note>
+  **Model Input**: NISQA expects audio at 48 kHz sampling rate. Audio is automatically resampled if provided at a different rate.
+</Note>
+
+<Note>
+  **Model Architecture**: NISQA uses CNN features with temporal dependencies captured via self-attention or LSTM layers.
+</Note>
+
+## Model Download
+
+Download pre-trained NISQA models from:
+- [Official NISQA Repository](https://github.com/gabrielmittag/NISQA)
+
+```bash
+# Example download location
+wget https://github.com/gabrielmittag/NISQA/raw/master/weights/nisqa.tar
+```
+
+## Performance Characteristics
+
+| Aspect | Details |
+|--------|----------|
+| Sampling Rate | 48 kHz (auto-resampled) |
+| Input Type | Single-channel audio |
+| Output Range | 1-5 (MOS scale) |
+| Reference Required | No (non-intrusive) |
+| Model Type | Deep neural network |

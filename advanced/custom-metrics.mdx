@@ -1,0 +1,319 @@
+---
+title: 'Custom Metrics'
+description: 'Learn how to implement and integrate custom metrics into VERSA'
+---
+
+## Overview
+
+VERSA provides a flexible framework for implementing custom audio evaluation metrics. This guide walks you through the process of creating, registering, and testing your own metrics.
+
+## Metric Types
+
+VERSA supports three types of metrics based on their computational scope:
+
+- **utterance_metrics**: Utterance-level metrics for individual audio samples
+- **sequence_metrics**: Metrics comparing two feature sequences (will be merged with utterance_metrics in future versions)
+- **corpus_metrics**: Metrics requiring the entire corpus (e.g., FAD, WER)
+
+## Implementation Structure
+
+### Two-Function Pattern
+
+Most metrics follow a two-function pattern: one for model setup and one for inference.
+
+<Steps>
+  <Step title="Create setup function">
+    The setup function initializes models and loads resources:
+
+    ```python versa/utterance_metrics/speaker.py
+    def speaker_model_setup(
+        model_tag="default", model_path=None, model_config=None, use_gpu=False
+    ):
+        if use_gpu:
+            device = "cuda"
+        else:
+            device = "cpu"
+        if model_path is not None and model_config is not None:
+            model = Speech2Embedding(
+                model_file=model_path, train_config=model_config, device=device
+            )
+        else:
+            if model_tag == "default":
+                model_tag = "espnet/voxcelebs12_rawnet3"
+            model = Speech2Embedding.from_pretrained(model_tag=model_tag, device=device)
+        return model
+    ```
+
+    <Note>
+      The `use_gpu` parameter is required by convention and defaults to `False`.
+    </Note>
+  </Step>
+
+  <Step title="Create inference function">
+    The inference function computes the metric:
+
+    ```python versa/utterance_metrics/speaker.py
+    def speaker_metric(model, pred_x, gt_x, fs):
+        # Resample if needed
+        if fs != 16000:
+            gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
+            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+
+        # Compute embeddings
+        embedding_gen = model(pred_x).squeeze(0).cpu().numpy()
+        embedding_gt = model(gt_x).squeeze(0).cpu().numpy()
+        
+        # Calculate similarity
+        similarity = np.dot(embedding_gen, embedding_gt) / (
+            np.linalg.norm(embedding_gen) * np.linalg.norm(embedding_gt)
+        )
+        return {"spk_similarity": similarity}
+    ```
+
+    The inference function receives:
+    - `model`: The inference model from setup
+    - `pred_x`: Audio signal to evaluate
+    - `fs`: Audio sampling rate
+    - `gt_x`: (Optional) Reference audio signal
+    - `ref_text`: (Optional) Text transcription or description
+  </Step>
+
+  <Step title="Add test function">
+    Include a simple test at the end of your file:
+
+    ```python
+    if __name__ == "__main__":
+        a = np.random.random(16000)
+        b = np.random.random(16000)
+        model = speaker_model_setup()
+        print("metrics: {}".format(speaker_metric(model, a, b, 16000)))
+    ```
+  </Step>
+</Steps>
+
+### Simplified Single-Function Pattern
+
+For metrics without model setup, use a single inference function:
+
+```python versa/utterance_metrics/stoi.py
+from pystoi import stoi
+
+def stoi_metric(pred_x, gt_x, fs):
+    if pred_x.shape[0] != gt_x.shape[0]:
+        min_length = min(pred_x.shape[0], gt_x.shape[0])
+        pred_x = pred_x[:min_length]
+        gt_x = gt_x[:min_length]
+    score = stoi(gt_x, pred_x, fs, extended=False)
+    return {"stoi": score}
+```
+
+## Metric Registration
+
+<Steps>
+  <Step title="Register in scorer_shared.py">
+    Add your metric to both `load_score_modules()` and `use_score_modules()` in `versa/scorer_shared.py`:
+
+    ```python
+    # In load_score_modules()
+    elif config["name"] == "my_metric":
+        logging.info("Loading My Metric evaluation...")
+        from versa.utterance_metrics import my_metric
+        
+        score_modules["my_metric"] = {
+            "model": my_metric.my_metric_setup(use_gpu=use_gpu),
+            "module": my_metric,
+        }
+        logging.info("Initiated My Metric successfully.")
+    ```
+
+    ```python
+    # In use_score_modules()
+    elif score_type == "my_metric":
+        scores = score_modules["my_metric"]["module"].my_metric_metric(
+            model=score_modules["my_metric"]["model"],
+            pred_x=pred_x,
+            gt_x=gt_x,
+            fs=pred_fs,
+        )
+    ```
+
+    <Warning>
+      Choose a unique key for your metric to avoid conflicts with existing metrics.
+    </Warning>
+  </Step>
+
+  <Step title="Register in metrics.py">
+    Declare whether your metric returns numerical or string values in `versa/metrics.py`:
+
+    ```python
+    NUM_METRIC = [
+        "spk_similarity",
+        "my_metric_score",  # Add your metric key here
+        # ...
+    ]
+
+    STR_METRIC = [
+        "language",
+        # Add here if your metric returns strings
+    ]
+    ```
+  </Step>
+
+  <Step title="Update documentation">
+    Add your metric to `docs/supported_metrics.md`:
+
+    - Mark the Auto-Install column with 'x' if included in default installation
+    - Leave blank if it requires external tools from the tools directory
+    - Provide metric name, config key, report key, code source, and reference paper
+  </Step>
+</Steps>
+
+## Testing
+
+<Steps>
+  <Step title="Local testing">
+    Test your metric implementation directly:
+
+    ```bash
+    python versa/utterance_metrics/my_metric.py
+    ```
+  </Step>
+
+  <Step title="Integration testing">
+    For metrics in default installation:
+
+    ```python test/test_general.py
+    # Add expected test values
+    ```
+
+    ```python test/test_metrics/test_my_metric.py
+    # Create dedicated test file for CI
+    ```
+
+    For optional metrics:
+
+    ```python test/test_pipeline/test_my_metric.py
+    # Add pipeline test
+    ```
+  </Step>
+
+  <Step title="Create example configuration">
+    Add a YAML configuration file in `egs/separate_metrics/`:
+
+    ```yaml my_metric.yaml
+    score:
+      - name: my_metric
+        fs: 16000
+        use_gpu: true
+    ```
+  </Step>
+</Steps>
+
+## Code Formatting
+
+Before submitting, format your code:
+
+```bash
+black versa/utterance_metrics/my_metric.py
+isort versa/utterance_metrics/my_metric.py
+```
+
+<Tip>
+  VERSA enforces code style checks in CI tests. Using `black` and `isort` ensures your code passes these checks.
+</Tip>
+
+## External Dependencies
+
+For metrics requiring specific package versions:
+
+<Steps>
+  <Step title="Fork the repository">
+    Create a fork of the external repository.
+  </Step>
+
+  <Step title="Add custom interface">
+    Modify the fork to match VERSA's interface requirements.
+  </Step>
+
+  <Step title="Create installation script">
+    Add a localized install script to the `tools/` directory:
+
+    ```bash tools/install_my_metric.sh
+    #!/bin/bash
+    git clone https://github.com/yourfork/metric-repo.git
+    cd metric-repo
+    pip install -e .
+    ```
+  </Step>
+</Steps>
+
+## Best Practices
+
+- **Naming conventions**: Use consistent function names ending with `_setup` and `_metric`
+- **Error handling**: Check for required dependencies with try/except blocks
+- **Resampling**: Always verify and resample audio to the required sample rate
+- **Return format**: Return a dictionary with descriptive keys
+- **Documentation**: Include docstrings explaining parameters and return values
+- **GPU support**: Implement the `use_gpu` parameter even if not strictly needed
+
+## Example: Complete Custom Metric
+
+```python versa/utterance_metrics/example_metric.py
+#!/usr/bin/env python3
+
+import numpy as np
+import librosa
+
+def example_metric_setup(model_path=None, use_gpu=False):
+    """Setup function for example metric.
+    
+    Args:
+        model_path: Optional path to custom model
+        use_gpu: Whether to use GPU acceleration
+    
+    Returns:
+        Initialized model or configuration
+    """
+    device = "cuda" if use_gpu else "cpu"
+    # Initialize your model here
+    model = load_model(model_path, device=device)
+    return model
+
+def example_metric(model, pred_x, fs, gt_x=None, ref_text=None):
+    """Compute example metric.
+    
+    Args:
+        model: Model from setup function
+        pred_x: Predicted audio signal
+        fs: Sample rate
+        gt_x: Optional ground truth audio
+        ref_text: Optional reference text
+    
+    Returns:
+        Dictionary with metric scores
+    """
+    # Resample if needed
+    target_fs = 16000
+    if fs != target_fs:
+        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=target_fs)
+        if gt_x is not None:
+            gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=target_fs)
+    
+    # Compute your metric
+    score = model.compute(pred_x)
+    
+    return {"example_score": score}
+
+if __name__ == "__main__":
+    # Simple test
+    test_audio = np.random.random(16000)
+    model = example_metric_setup()
+    result = example_metric(model, test_audio, 16000)
+    print(f"Test result: {result}")
+```
+
+## Next Steps
+
+- Review existing metrics in `versa/utterance_metrics/` for more examples
+- Join the VERSA community to discuss your metric implementation
+- Consider contributing your metric back to the main repository

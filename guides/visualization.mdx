@@ -1,0 +1,591 @@
+---
+title: Visualization
+description: Visualize and analyze VERSA evaluation results with interactive charts
+---
+
+VERSA provides comprehensive visualization tools to help you analyze evaluation results through interactive charts, statistical summaries, and comparative analysis.
+
+## Installation
+
+First, install the required visualization dependencies:
+
+```bash
+pip install -r scripts/visualization/requirements.txt
+```
+
+This installs:
+- `pandas` - Data manipulation
+- `matplotlib` - Static plotting
+- `seaborn` - Statistical visualization
+- `plotly` - Interactive charts
+- `numpy` - Numerical operations
+
+## Quick Start
+
+### Basic Result Analysis
+
+Analyze VERSA output files:
+
+```bash
+python scripts/show_result.py results/evaluation.jsonl
+```
+
+This displays:
+- Per-category metric summaries
+- Statistical analysis (mean, std, min, max)
+- Automatically discovered metrics
+- Category organization
+
+### Export to CSV
+
+Export results for further analysis:
+
+```bash
+python scripts/show_result.py results/evaluation.jsonl --export-csv
+```
+
+Outputs `metrics_analysis.csv` with comprehensive metric statistics.
+
+## show_result.py Options
+
+<ParamField path="input" type="string" required>
+  Input JSONL file or directory containing JSONL files with evaluation results.
+</ParamField>
+
+<ParamField path="--per-utt" type="flag">
+  Display per-utterance results in the console.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --per-utt
+  ```
+</ParamField>
+
+<ParamField path="--output-jsonl" type="string">
+  Save per-utterance results to a new JSONL file.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --output-jsonl processed.jsonl
+  ```
+</ParamField>
+
+<ParamField path="--metrics" type="list">
+  Analyze only specific metrics.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --metrics pesq stoi utmos
+  ```
+</ParamField>
+
+<ParamField path="--visualize" type="flag">
+  Create visualization plots organized by metric categories.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --visualize
+  ```
+</ParamField>
+
+<ParamField path="--output-dir" type="string">
+  Directory to save plots and exported files.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --visualize --output-dir plots/
+  ```
+</ParamField>
+
+<ParamField path="--export-csv" type="flag">
+  Export comprehensive metric analysis to CSV.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --export-csv --output-dir analysis/
+  ```
+</ParamField>
+
+<ParamField path="--show-discovery" type="flag">
+  Display which metrics were discovered in the data.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --show-discovery
+  ```
+</ParamField>
+
+<ParamField path="--analyze-metrics" type="flag">
+  Show detailed quality analysis and characteristics of each metric.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --analyze-metrics
+  ```
+</ParamField>
+
+<ParamField path="--categories" type="list">
+  Analyze only specific metric categories.
+  
+  ```bash
+  python scripts/show_result.py results.jsonl --categories audio_quality similarity
+  ```
+</ParamField>
+
+## Complete Visualization Workflow
+
+<Steps>
+  <Step title="Aggregate Results">
+    Export evaluation results to CSV format:
+    ```bash
+    python scripts/show_result.py results/utt_result.txt --export-csv
+    ```
+    
+    This creates `metrics_analysis.csv` with all metric statistics.
+  </Step>
+  
+  <Step title="Convert to Tree Format">
+    Transform CSV into hierarchical tree structure:
+    ```bash
+    python scripts/visualization/build_metricsTree.py \
+        --input_file metrics_analysis.csv \
+        --output_file metrics_tree.csv
+    ```
+    
+    The tree format organizes metrics by category for visualization.
+  </Step>
+  
+  <Step title="Create Sunburst Chart">
+    Generate interactive sunburst visualization:
+    ```bash
+    python scripts/visualization/sunburst_chart.py \
+        --result_filepath metrics_tree.csv
+    ```
+    
+    Opens an interactive chart in your browser showing metric hierarchy and values.
+    
+    To save as HTML:
+    ```bash
+    python scripts/visualization/sunburst_chart.py \
+        --result_filepath metrics_tree.csv \
+        --save_html True
+    ```
+  </Step>
+  
+  <Step title="Create Radar Chart (Optional)">
+    Compare multiple models using radar charts:
+    
+    First, collect metrics from different models:
+    ```bash
+    # Model 1
+    python scripts/show_result.py model1/results.txt --export-csv
+    mv metrics_analysis.csv output_csvs/model1.csv
+    
+    # Model 2
+    python scripts/show_result.py model2/results.txt --export-csv
+    mv metrics_analysis.csv output_csvs/model2.csv
+    
+    # Model 3
+    python scripts/show_result.py model3/results.txt --export-csv
+    mv metrics_analysis.csv output_csvs/model3.csv
+    ```
+    
+    Then create radar chart by category:
+    ```bash
+    python scripts/visualization/radar_chart.py \
+        --data_dir output_csvs \
+        --category audio_quality
+    ```
+    
+    Or by specific metrics:
+    ```bash
+    python scripts/visualization/radar_chart.py \
+        --data_dir output_csvs \
+        --metrics pesq,stoi,utmos,dnsmos
+    ```
+  </Step>
+</Steps>
+
+## Visualization Examples
+
+### Comprehensive Analysis
+
+Analyze all aspects of your results:
+
+```bash
+python scripts/show_result.py results/evaluation.jsonl \
+    --show-discovery \
+    --analyze-metrics \
+    --visualize \
+    --export-csv \
+    --output-dir analysis/
+```
+
+This produces:
+- Console output with metric discovery and analysis
+- `analysis/metrics_analysis.csv` - Statistical summary
+- `analysis/*_metrics_analysis.png` - Category-wise plots
+- `analysis/correlation_heatmap.png` - Metric correlation matrix
+
+### Category-Specific Analysis
+
+Focus on specific metric categories:
+
+<Tabs>
+  <Tab title="Audio Quality">
+    ```bash
+    python scripts/show_result.py results.jsonl \
+        --categories audio_quality \
+        --visualize \
+        --output-dir plots/quality/
+    ```
+    
+    Analyzes: UTMOS, DNSMOS, NISQA, PLCMOS, etc.
+  </Tab>
+  
+  <Tab title="Speech Enhancement">
+    ```bash
+    python scripts/show_result.py results.jsonl \
+        --categories speech_enhancement \
+        --visualize \
+        --output-dir plots/enhancement/
+    ```
+    
+    Analyzes: PESQ, STOI, SDR, SI-SNR, CI-SDR, etc.
+  </Tab>
+  
+  <Tab title="Similarity Metrics">
+    ```bash
+    python scripts/show_result.py results.jsonl \
+        --categories similarity \
+        --visualize \
+        --output-dir plots/similarity/
+    ```
+    
+    Analyzes: Speaker similarity, emotion similarity, singer similarity.
+  </Tab>
+  
+  <Tab title="ASR Metrics">
+    ```bash
+    python scripts/show_result.py results.jsonl \
+        --categories asr_wer_cer \
+        --visualize \
+        --output-dir plots/asr/
+    ```
+    
+    Analyzes: WER, CER, and their error type breakdowns.
+  </Tab>
+</Tabs>
+
+### Model Comparison
+
+Compare multiple models side by side:
+
+```bash
+#!/bin/bash
+# compare_models.sh
+
+mkdir -p comparison/
+
+# Process each model
+for model in model_a model_b model_c; do
+    python scripts/show_result.py \
+        results/${model}/evaluation.jsonl \
+        --export-csv \
+        --output-dir comparison/
+    
+    # Convert for visualization
+    python scripts/visualization/build_metricsTree.py \
+        --input_file comparison/metrics_analysis.csv \
+        --output_file comparison/${model}.csv
+done
+
+# Create comparison radar chart
+python scripts/visualization/radar_chart.py \
+    --data_dir comparison/ \
+    --category audio_quality \
+    --save_html True
+```
+
+## Metric Categories
+
+VERSA automatically organizes metrics into categories:
+
+<AccordionGroup>
+  <Accordion title="Audio Quality">
+    MOS prediction and overall quality metrics:
+    - UTMOS, DNSMOS, PLCMOS
+    - NISQA, Sheet-SSQA
+    - NoResQA, WVMOS, SigMOS
+    - ScoreQ (reference and no-reference)
+  </Accordion>
+  
+  <Accordion title="Speech Enhancement">
+    Signal improvement and intelligibility:
+    - PESQ, STOI, ESTOI
+    - SDR, SIR, SAR
+    - SI-SNR, CI-SDR
+    - ViSQOL, SQUIM
+  </Accordion>
+  
+  <Accordion title="Psychoacoustic">
+    Perceptual and psychoacoustic measures:
+    - FWSEGSNR, WSS, CD
+    - CSIG, CBAK, COVL
+    - CSII (high/mid/low)
+    - NCM, LLR, SRMR
+  </Accordion>
+  
+  <Accordion title="Similarity">
+    Identity and characteristic matching:
+    - Speaker similarity (cosine)
+    - Singer similarity
+    - Emotion similarity
+  </Accordion>
+  
+  <Accordion title="Pitch & F0">
+    Fundamental frequency analysis:
+    - F0 correlation
+    - F0 RMSE
+    - MCD (Mel-Cepstral Distortion)
+  </Accordion>
+  
+  <Accordion title="ASR (WER/CER)">
+    Automatic speech recognition metrics:
+    - WER, CER (Whisper, ESPnet, OWSM)
+    - Error type breakdown (insert, delete, replace)
+    - ASR match error rate
+  </Accordion>
+  
+  <Accordion title="Semantic">
+    Content and semantic metrics:
+    - Speech BERT score
+    - Speech BLEU
+    - Speech token distance
+    - CLAP score
+  </Accordion>
+  
+  <Accordion title="Aesthetics">
+    AudioBox aesthetic attributes:
+    - Clarity (CE)
+    - Crispness (CU)
+    - Pleasantness (PC)
+    - Quality (PQ)
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Analysis
+
+### Statistical Summary
+
+Get detailed statistical insights:
+
+```bash
+python scripts/show_result.py results.jsonl --analyze-metrics
+```
+
+For each metric, shows:
+- Sample count
+- Mean and median
+- Standard deviation and range
+- Coefficient of variation
+- Variability assessment
+- Quality notes
+- Interpretation (higher/lower is better)
+- Best and worst values
+
+### Correlation Analysis
+
+Understand metric relationships:
+
+```bash
+python scripts/show_result.py results.jsonl \
+    --visualize \
+    --output-dir analysis/
+```
+
+Generates `correlation_heatmap.png` showing:
+- Metric-to-metric correlations
+- Redundant metrics (high correlation)
+- Complementary metrics (low correlation)
+
+### Directory Processing
+
+Process multiple JSONL files at once:
+
+```bash
+# Analyze all JSONL files in a directory
+python scripts/show_result.py results/ --export-csv
+```
+
+Automatically finds and processes:
+- `*.jsonl`
+- `*.json`
+- `*.jl`
+- `*.txt` (with JSONL format)
+
+## Output Formats
+
+### Console Output
+
+Summary table showing all metrics:
+
+```
+================================================================================
+OVERALL RESULTS (1000 utterances)
+================================================================================
+
+AUDIO QUALITY METRICS (5 metrics):
+--------------------------------------------------------------------------------
+  utmos:
+    Count: 1000, Mean: 4.1234, Std: 0.3456
+    Range: [2.5432, 4.9876]
+  dnsmos:
+    Count: 1000, Mean: 3.8765, Std: 0.2987
+    Range: [2.8765, 4.6543]
+...
+```
+
+### CSV Export
+
+Structured data for analysis:
+
+```csv
+metric_name,category,count,mean,median,std,min,max,range,cv,variability,quality_note
+utmos,audio_quality,1000,4.1234,4.1567,0.3456,2.5432,4.9876,2.4444,0.0838,moderate,reasonable discriminative power
+pesq,speech_enhancement,1000,3.4567,3.5234,0.4321,1.2345,4.3456,3.1111,0.1250,moderate,reasonable discriminative power
+...
+```
+
+### JSONL Output
+
+Per-utterance detailed results:
+
+```json
+{"key": "utt_001", "utmos": 4.123, "pesq": 3.456, "stoi": 0.923}
+{"key": "utt_002", "utmos": 4.234, "pesq": 3.567, "stoi": 0.934}
+```
+
+## Visualization Gallery
+
+### Sunburst Chart
+
+Hierarchical view of all metrics by category:
+
+<img src="https://github.com/wavlab-speech/versa/blob/main/scripts/visualization/sample_sunburstchart.png" alt="Sunburst Chart" />
+
+Features:
+- Interactive drill-down by category
+- Hover for detailed values
+- Visual comparison of metric magnitudes
+- Category-based color coding
+
+### Radar Chart
+
+Multi-model comparison:
+
+<img src="https://github.com/wavlab-speech/versa/blob/main/scripts/visualization/radar_chart.png" alt="Radar Chart" />
+
+Features:
+- Compare multiple models simultaneously
+- Category or metric-specific views
+- Normalized scales for fair comparison
+- Interactive legend
+
+### Distribution Plots
+
+Generated with `--visualize`:
+- Histograms showing value distributions
+- Box plots for outlier detection
+- Category-organized subplots
+- Statistical overlays (mean, std)
+
+### Correlation Heatmap
+
+Metric relationship visualization:
+- Upper-triangular matrix layout
+- Color-coded correlation strength
+- Helps identify redundant metrics
+- Discovers metric relationships
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Analysis" icon="chart-line">
+    Analyze results after each experiment to track improvements and identify issues early.
+  </Card>
+  
+  <Card title="Category Focus" icon="filter">
+    Use `--categories` to focus on relevant metrics for your use case rather than analyzing all metrics at once.
+  </Card>
+  
+  <Card title="Save Visualizations" icon="floppy-disk">
+    Always use `--output-dir` to save plots for presentations and reports.
+  </Card>
+  
+  <Card title="Compare Models" icon="code-compare">
+    Use radar charts to compare multiple models on the same metric set for clear insights.
+  </Card>
+</CardGroup>
+
+<Tip>
+**Pro Tip**: Create a visualization script for your project:
+
+```bash
+#!/bin/bash
+# analyze.sh
+python scripts/show_result.py $1 \
+    --show-discovery \
+    --analyze-metrics \
+    --visualize \
+    --export-csv \
+    --output-dir analysis/$(basename $1 .jsonl)
+```
+
+Usage: `./analyze.sh results/experiment1.jsonl`
+</Tip>
+
+<Warning>
+When comparing models with radar charts, ensure all models were evaluated on the same test set for fair comparison.
+</Warning>
+
+## Troubleshooting
+
+<Accordion title="Missing visualization dependencies">
+  Install required packages:
+  ```bash
+  pip install pandas matplotlib seaborn plotly numpy
+  ```
+  
+  Or use the requirements file:
+  ```bash
+  pip install -r scripts/visualization/requirements.txt
+  ```
+</Accordion>
+
+<Accordion title="Empty plots or no metrics found">
+  Verify your JSONL format:
+  ```bash
+  head -n 5 results.jsonl
+  ```
+  
+  Each line should be valid JSON with numeric metric values.
+  
+  Use `--show-discovery` to see which metrics were detected:
+  ```bash
+  python scripts/show_result.py results.jsonl --show-discovery
+  ```
+</Accordion>
+
+<Accordion title="Port forwarding for remote servers">
+  If running on a remote server without display:
+  
+  1. Save as HTML:
+     ```bash
+     python scripts/visualization/sunburst_chart.py \
+         --result_filepath metrics_tree.csv \
+         --save_html True
+     ```
+  
+  2. Download HTML file to local machine
+  
+  3. Open in browser
+</Accordion>
+
+## Next Steps
+
+- Learn about [CLI usage](/guides/cli-usage) to generate evaluation results
+- Explore [distributed evaluation](/guides/distributed-evaluation) for large-scale analysis
+- Check [metric configuration](/configuration/metrics) to understand available metrics

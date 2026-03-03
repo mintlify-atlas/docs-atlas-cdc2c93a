@@ -1,0 +1,302 @@
+---
+title: Installation
+description: Install VERSA and configure metric-specific dependencies
+---
+
+VERSA provides a flexible installation process with a lightweight core package and optional metric-specific dependencies. This guide walks you through the installation options.
+
+## Prerequisites
+
+Before installing VERSA, ensure you have:
+
+- Python 3.8 or higher
+- pip package manager
+- Git (for cloning the repository)
+- CUDA-compatible GPU (optional, for GPU-accelerated metrics)
+
+<Note>
+  **Python 3.13 users**: VERSA uses the latest Whisper commit to ensure compatibility with Python 3.13.
+</Note>
+
+## Basic Installation
+
+The basic installation includes the core VERSA toolkit with many commonly used metrics.
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the VERSA repository from GitHub:
+    
+    ```bash
+    git clone https://github.com/wavlab-speech/versa.git
+    cd versa
+    ```
+  </Step>
+  
+  <Step title="Install the Package">
+    Install VERSA using pip:
+    
+    ```bash
+    pip install .
+    ```
+    
+    This installs the core package with auto-installed metrics including:
+    - PESQ, STOI for intelligibility
+    - UTMOS, DNSMOS, NISQA for perceptual quality
+    - MCD, F0 metrics for spectral analysis
+    - Signal metrics (SDR, SAR, SIR, SI-SNR, CI-SDR)
+    - Speaker similarity using ESPnet
+  </Step>
+  
+  <Step title="Verify Installation">
+    Test the installation with the core functionality test:
+    
+    ```bash
+    python versa/test/test_pipeline/test_general.py
+    ```
+    
+    You should see output confirming successful metric calculations:
+    
+    ```
+    Summary: {'mcd': 5.045, 'pesq': 1.572, 'stoi': 0.008, ...}
+    check successful
+    ```
+  </Step>
+</Steps>
+
+## Alternative Installation (Without Cloning)
+
+You can install VERSA directly from GitHub without cloning:
+
+```bash
+python -m pip install git+https://github.com/wavlab-speech/versa.git#egg=versa-speech-audio-toolkit --no-build-isolation
+```
+
+<Warning>
+  This method installs only the basic package. You'll still need to manually install metric-specific dependencies for advanced metrics.
+</Warning>
+
+## Metric-Specific Dependencies
+
+VERSA aligns with original APIs provided by algorithm developers rather than redistributing models. Some metrics require additional installation steps.
+
+### Understanding Auto-Install Status
+
+In the [supported metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md), metrics are marked with an "x" in the "Auto-Install" column if they're included in the basic installation.
+
+Metrics **without** an "x" require additional installation using the provided installers.
+
+### Installing Additional Metrics
+
+<Steps>
+  <Step title="Locate the Installer">
+    Navigate to the `tools` directory:
+    
+    ```bash
+    cd tools
+    ls
+    ```
+    
+    You'll see installation scripts for various metrics:
+    - `install_visqol.md` - For ViSQOL metric
+    - `install_gitlfs.md` - For Git LFS dependencies
+    - Additional installers for specific metrics
+  </Step>
+  
+  <Step title="Run the Installer">
+    Follow the instructions in the relevant installer file. For example, to install ViSQOL:
+    
+    ```bash
+    # Follow instructions in tools/install_visqol.md
+    ```
+  </Step>
+  
+  <Step title="Test the Metric">
+    Verify the metric installation with its specific test:
+    
+    ```bash
+    python versa/test/test_pipeline/test_{metric}.py
+    ```
+    
+    Replace `{metric}` with the metric name (e.g., `test_wvmos.py`, `test_sigmos.py`).
+  </Step>
+</Steps>
+
+### Common Optional Metrics
+
+<CodeGroup>
+```bash ViSQOL (Virtual Speech Quality Objective Listener)
+# Follow the installation guide
+cat tools/install_visqol.md
+
+# Test installation
+python versa/test/test_pipeline/test_visqol.py
+```
+
+```bash WV-MOS (Wav2Vec2-based MOS)
+# Test if available
+python versa/test/test_pipeline/test_wvmos.py
+```
+
+```bash SIG-MOS
+# Test if available
+python versa/test/test_pipeline/test_sigmos.py
+```
+
+```bash Qwen2-Audio Metrics
+# Test LLM-based profiling
+python versa/test/test_pipeline/test_qwen2_audio.py
+```
+</CodeGroup>
+
+## Development Installation
+
+If you plan to contribute to VERSA or modify the source code:
+
+<Steps>
+  <Step title="Install with Dev Dependencies">
+    ```bash
+    pip install -e ".[dev]"
+    ```
+    
+    This installs:
+    - pytest for testing
+    - pytest-cov for coverage reports
+    - black for code formatting
+    - flake8 for linting
+  </Step>
+  
+  <Step title="Run the Test Suite">
+    ```bash
+    pytest versa/test/
+    ```
+  </Step>
+  
+  <Step title="Check Code Style">
+    ```bash
+    black versa/
+    flake8 versa/
+    ```
+  </Step>
+</Steps>
+
+## GPU Support
+
+Many metrics support GPU acceleration for faster evaluation:
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech.yaml \
+    --pred audio.scp \
+    --gt reference.scp \
+    --output_file results \
+    --use_gpu true
+```
+
+<Info>
+  **Multi-GPU Support**: When running distributed evaluation, VERSA automatically assigns GPU ranks based on the `--rank` parameter and available devices.
+</Info>
+
+## Slurm Environment Setup
+
+For large-scale distributed evaluation on HPC clusters:
+
+<Steps>
+  <Step title="Install VERSA on the Cluster">
+    Follow the basic installation steps on your cluster's compute nodes.
+  </Step>
+  
+  <Step title="Verify Slurm Availability">
+    ```bash
+    which sbatch
+    sinfo
+    ```
+  </Step>
+  
+  <Step title="Configure Launch Scripts">
+    Review and modify the Slurm launch scripts:
+    
+    ```bash
+    cat launch_slurm.sh
+    # Adjust partition, memory, and GPU requirements
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Import errors for specific metrics">
+    Some metrics have optional dependencies. Check the error message for the missing package:
+    
+    ```python
+    # If you see: "Please install pesq with `pip install pesq` and retry"
+    pip install pesq
+    
+    # If you see: "Please install pystoi with `pip install pystoi` and retry"
+    pip install pystoi
+    ```
+  </Accordion>
+  
+  <Accordion title="CUDA out of memory errors">
+    Reduce batch size or evaluate metrics sequentially:
+    
+    ```bash
+    # Use CPU for memory-intensive metrics
+    python versa/bin/scorer.py \
+        --score_config egs/speech_cpu.yaml \
+        --use_gpu false
+    ```
+  </Accordion>
+  
+  <Accordion title="Git LFS files not downloading">
+    Some models require Git LFS:
+    
+    ```bash
+    # Install Git LFS
+    cat tools/install_gitlfs.md
+    
+    # Re-clone with LFS
+    git lfs install
+    git lfs pull
+    ```
+  </Accordion>
+  
+  <Accordion title="ESPnet installation issues">
+    VERSA uses a specific ESPnet branch. If you encounter issues:
+    
+    ```bash
+    pip uninstall espnet
+    pip install git+https://github.com/ftshijt/espnet.git@espnet_inference#egg=espnet
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Verifying Your Installation
+
+Run the comprehensive test to verify all installed metrics:
+
+```bash
+# Test all basic metrics
+python versa/test/test_pipeline/test_general.py
+
+# Test individual metrics
+python versa/test/test_pipeline/test_wer.py
+python versa/test/test_pipeline/test_pam.py
+python versa/test/test_pipeline/test_fad.py
+```
+
+<Tip>
+  **Check installed metrics**: Review `egs/speech.yaml` to see which metrics are configured by default, then cross-reference with the [supported metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md).
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="bolt" href="/quickstart">
+    Run your first evaluation with real audio samples
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/concepts/configuration">
+    Learn how to configure metrics and customize evaluations
+  </Card>
+</CardGroup>

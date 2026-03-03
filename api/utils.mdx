@@ -1,0 +1,387 @@
+---
+title: 'Utils'
+description: 'Utility functions for audio processing, file handling, and data validation'
+---
+
+## Overview
+
+The utils module provides essential helper functions for audio loading, normalization, file discovery, and validation checks used throughout VERSA.
+
+**Source:** `versa/utils_shared.py`
+
+## File Operations
+
+### find_files
+
+Recursively searches for audio files in a directory.
+
+```python
+from versa.utils_shared import find_files
+
+audio_dict = find_files(
+    root_dir="/path/to/audio",
+    query=["*.wav", "*.flac"],
+    include_root_dir=True
+)
+
+print(audio_dict)
+# {'sample1.wav': '/path/to/audio/sample1.wav', ...}
+```
+
+**Location:** `versa/utils_shared.py:16-38`
+
+<ParamField path="root_dir" type="string" required>
+  Root directory to search recursively for audio files.
+</ParamField>
+
+<ParamField path="query" type="List[string]" default='["*.flac", "*.wav"]'>
+  List of file patterns to match using wildcards.
+</ParamField>
+
+<ParamField path="include_root_dir" type="bool" default="true">
+  Whether to include the root directory path in returned file paths. If False, paths are relative to root_dir.
+</ParamField>
+
+**Returns:** Dictionary mapping filenames to their full paths.
+
+## Audio Processing
+
+### load_audio
+
+Loads audio data based on the specified I/O interface.
+
+```python
+from versa.utils_shared import load_audio
+
+# Kaldi-style loading
+sr, wav = load_audio(kaldi_info, io="kaldi")
+
+# SoundFile loading
+sr, wav = load_audio(file_path, io="soundfile")
+```
+
+**Location:** `versa/utils_shared.py:49-56`
+
+<ParamField path="info" type="any" required>
+  Audio information. Type depends on `io` parameter:
+  - `kaldi`: Tuple of (sample_rate, waveform)
+  - `soundfile` or `dir`: File path string
+</ParamField>
+
+<ParamField path="io" type="string" required>
+  I/O interface type: `kaldi`, `soundfile`, or `dir`.
+</ParamField>
+
+**Returns:** Tuple of `(sample_rate, waveform_array)`
+
+**Raises:** `NotImplementedError` if unknown I/O type is provided.
+
+### wav_normalize
+
+Normalizes audio waveform to floating-point range [-1.0, 1.0].
+
+```python
+from versa.utils_shared import wav_normalize
+import numpy as np
+
+# Normalize int16 audio
+int_audio = np.array([16384, -16384], dtype=np.int16)
+normalized = wav_normalize(int_audio)
+print(normalized)
+# [0.5, -0.5]
+
+# Handle multi-channel (uses first channel)
+stereo = np.random.randn(16000, 2)
+mono = wav_normalize(stereo)  # Warning logged, returns channel 0
+```
+
+**Location:** `versa/utils_shared.py:59-73`
+
+<ParamField path="wave_array" type="numpy.ndarray" required>
+  Audio waveform array. Can be int16 or float format.
+</ParamField>
+
+**Returns:** Normalized float64 numpy array in range [-1.0, 1.0].
+
+**Notes:**
+- Multi-channel audio is automatically converted to mono using the first channel (warning logged)
+- Already-normalized float arrays are returned as float64 with contiguous memory
+- Int16 samples are normalized by dividing by 32767 (max int16 value)
+
+## Validation Functions
+
+### check_all_same
+
+Checks if all values in an array are identical (indicates silence or corrupted audio).
+
+```python
+from versa.utils_shared import check_all_same
+import numpy as np
+
+silence = np.zeros(16000)
+is_silence = check_all_same(silence)
+print(is_silence)  # True
+
+valid_audio = np.random.randn(16000)
+is_silence = check_all_same(valid_audio)
+print(is_silence)  # False
+```
+
+**Location:** `versa/utils_shared.py:41-46`
+
+<ParamField path="array" type="numpy.ndarray" required>
+  Array to check for uniform values.
+</ParamField>
+
+**Returns:** Boolean indicating if all values are the same.
+
+**Notes:**
+- Returns `True` for empty arrays (with warning)
+- Used to detect corrupted or silent audio files
+
+### check_minimum_length
+
+Validates if audio duration meets minimum requirements for specified metrics.
+
+```python
+from versa.utils_shared import check_minimum_length
+
+# Check if 0.2s audio is valid for STOI
+metrics = ["stoi", "utmos"]
+is_valid = check_minimum_length(0.2, metrics)
+print(is_valid)  # False (STOI requires >= 0.3s)
+
+# Check for PESQ
+metrics = ["pesq"]
+is_valid = check_minimum_length(0.3, metrics)
+print(is_valid)  # True (PESQ requires >= 0.25s)
+```
+
+**Location:** `versa/utils_shared.py:76-97`
+
+<ParamField path="length" type="float" required>
+  Audio duration in seconds.
+</ParamField>
+
+<ParamField path="key_info" type="iterable" required>
+  List or set of metric names to check requirements for.
+</ParamField>
+
+**Returns:** Boolean indicating if audio meets all minimum length requirements.
+
+**Minimum Length Requirements:**
+- **STOI**: 0.3 seconds (0.256s in pystoi implementation)
+- **PESQ**: 0.25 seconds
+- **ViSQOL**: 1.0 seconds  
+- **Sheet SSQA**: 0.065 seconds
+- **SQUIM** (ref/no_ref): 0.1 seconds
+
+## Serialization
+
+### default_numpy_serializer
+
+JSON serializer for converting NumPy types to native Python types.
+
+```python
+import json
+import numpy as np
+from versa.utils_shared import default_numpy_serializer
+
+scores = {
+    "utmos": np.float32(3.45),
+    "wer": np.int64(15),
+    "mfcc": np.array([1.2, 3.4, 5.6])
+}
+
+# Serialize with NumPy support
+json_str = json.dumps(scores, default=default_numpy_serializer)
+print(json_str)
+# {"utmos": 3.45, "wer": 15, "mfcc": [1.2, 3.4, 5.6]}
+```
+
+**Location:** `versa/utils_shared.py:100-112`
+
+<ParamField path="obj" type="any" required>
+  Object to serialize. Handles NumPy types and converts them to Python native types.
+</ParamField>
+
+**Returns:** Native Python type (float, int, or list).
+
+**Raises:** `TypeError` if object type is not recognized.
+
+**Supported Types:**
+- `np.float32` → `float`
+- `np.integer` (int32, int64, etc.) → `int`
+- `np.floating` (float64, etc.) → `float`
+- `np.ndarray` → `list`
+
+## Usage Examples
+
+### Complete Audio Loading Pipeline
+
+```python
+from versa.utils_shared import (
+    find_files,
+    load_audio,
+    wav_normalize,
+    check_all_same,
+    check_minimum_length
+)
+import logging
+
+# Find all audio files
+audio_files = find_files(
+    root_dir="/data/audio",
+    query=["*.wav", "*.flac"],
+    include_root_dir=False
+)
+
+metrics_to_use = ["utmos", "pesq", "stoi"]
+valid_audio = {}
+
+# Process and validate each file
+for key, path in audio_files.items():
+    # Load audio
+    sr, wav = load_audio(path, io="soundfile")
+    
+    # Normalize
+    wav = wav_normalize(wav)
+    
+    # Check for silence
+    if check_all_same(wav):
+        logging.warning(f"{key} contains only silence, skipping")
+        continue
+    
+    # Check minimum length
+    duration = len(wav) / sr
+    if not check_minimum_length(duration, metrics_to_use):
+        logging.warning(f"{key} too short ({duration:.2f}s), skipping")
+        continue
+    
+    # Store validated audio
+    valid_audio[key] = (sr, wav)
+
+print(f"Validated {len(valid_audio)}/{len(audio_files)} files")
+```
+
+### Handling Different I/O Formats
+
+```python
+from versa.utils_shared import load_audio
+import kaldiio
+
+# Kaldi format (with pipes)
+kaldi_scp = kaldiio.load_scp("wav.scp")
+for key, audio_info in kaldi_scp.items():
+    sr, wav = load_audio(audio_info, io="kaldi")
+    print(f"{key}: {sr}Hz, {len(wav)} samples")
+
+# SoundFile format (simple paths)
+with open("files.scp") as f:
+    for line in f:
+        key, path = line.strip().split(maxsplit=1)
+        sr, wav = load_audio(path, io="soundfile")
+        print(f"{key}: {sr}Hz")
+
+# Directory format
+from versa.utils_shared import find_files
+
+audio_dict = find_files("/data/audio", query=["*.wav"])
+for key, path in audio_dict.items():
+    sr, wav = load_audio(path, io="dir")
+    print(f"{key}: {len(wav)} samples")
+```
+
+### Metric-Aware Audio Validation
+
+```python
+from versa.utils_shared import check_minimum_length
+
+def validate_for_metrics(duration, metrics):
+    """Validate audio duration for specific metrics."""
+    requirements = {
+        "stoi": 0.3,
+        "pesq": 0.25,
+        "visqol": 1.0,
+        "sheet_ssqa": 0.065,
+        "squim_ref": 0.1,
+        "squim_no_ref": 0.1
+    }
+    
+    for metric in metrics:
+        for req_metric, min_len in requirements.items():
+            if req_metric in metric and duration < min_len:
+                return False, f"{metric} requires >= {min_len}s (got {duration:.3f}s)"
+    
+    return True, "OK"
+
+# Check audio
+is_valid, message = validate_for_metrics(0.5, ["utmos", "stoi", "pesq"])
+print(f"Valid: {is_valid}, Reason: {message}")
+# Valid: True, Reason: OK
+
+is_valid, message = validate_for_metrics(0.2, ["stoi"])
+print(f"Valid: {is_valid}, Reason: {message}")
+# Valid: False, Reason: stoi requires >= 0.3s (got 0.200s)
+```
+
+### Saving Results with NumPy Support
+
+```python
+import json
+import numpy as np
+from versa.utils_shared import default_numpy_serializer
+
+# Compute metrics (returns NumPy types)
+results = {
+    "utterance_id": "sample_001",
+    "utmos": np.float32(3.87),
+    "pesq": np.float64(3.12),
+    "wer": np.int64(5),
+    "mfcc_mean": np.array([1.2, 3.4, 5.6, 7.8])
+}
+
+# Save to JSONL
+with open("results.jsonl", "w") as f:
+    json_line = json.dumps(results, default=default_numpy_serializer)
+    f.write(json_line + "\n")
+
+print("Results saved successfully")
+```
+
+### Multi-Channel Audio Handling
+
+```python
+from versa.utils_shared import wav_normalize
+import soundfile as sf
+import logging
+
+logging.basicConfig(level=logging.WARNING)
+
+# Load stereo audio
+stereo_wav, sr = sf.read("stereo_file.wav")
+print(f"Original shape: {stereo_wav.shape}")  # (48000, 2)
+
+# Normalize (automatically converts to mono)
+mono_wav = wav_normalize(stereo_wav)
+print(f"Normalized shape: {mono_wav.shape}")  # (48000,)
+# Warning: detect multi-channel data for mcd-f0 calculation, use first channel
+```
+
+## Notes
+
+<Info>
+  All utility functions are designed to work seamlessly with the scorer module and handle edge cases gracefully.
+</Info>
+
+<Warning>
+  Multi-channel audio is automatically converted to mono by taking the first channel. A warning is logged when this occurs.
+</Warning>
+
+<Note>
+  The `check_minimum_length` function prevents errors from metrics that have minimum audio duration requirements. Always validate audio length before evaluation.
+</Note>
+
+<Tip>
+  Use `default_numpy_serializer` when saving results to JSON to avoid serialization errors with NumPy types.
+</Tip>

@@ -1,0 +1,179 @@
+---
+title: Introduction to VERSA
+description: A comprehensive toolkit for evaluating speech and audio quality with 90+ metrics
+---
+
+VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 90 evaluation metrics with 10x variants, enabling you to assess audio quality through multiple dimensions.
+
+## Why VERSA?
+
+Evaluating audio quality requires multiple perspectives. A single metric cannot capture perceptual quality, intelligibility, technical accuracy, and statistical properties simultaneously. VERSA solves this by providing:
+
+<CardGroup cols={2}>
+  <Card title="Comprehensive Coverage" icon="layer-group">
+    Access 90+ metrics covering perceptual quality, intelligibility, technical measurements, and statistical properties in one unified toolkit.
+  </Card>
+  
+  <Card title="Production Ready" icon="rocket">
+    Widely used in speech toolkits and challenges including ESPnet, with built-in support for distributed evaluation using Slurm.
+  </Card>
+  
+  <Card title="Flexible Inputs" icon="code-branch">
+    Support for various input formats including file paths, SCP files, and Kaldi-style ARKs for seamless integration.
+  </Card>
+  
+  <Card title="Interactive Visualization" icon="chart-line">
+    Built-in visualization tools to analyze and compare evaluation results across multiple metrics.
+  </Card>
+</CardGroup>
+
+## Key Features
+
+### Multiple Metric Categories
+
+VERSA organizes metrics into four intuitive categories:
+
+<Steps>
+  <Step title="Independent Metrics">
+    Standalone metrics that don't require reference audio. Examples include DNSMOS, UTMOS, NISQA, and voice activity detection.
+  </Step>
+  
+  <Step title="Dependent Metrics">
+    Metrics that compare predicted audio against reference audio. Examples include PESQ, STOI, MCD, and signal-to-noise ratios.
+  </Step>
+  
+  <Step title="Non-match Metrics">
+    Metrics that work with non-matching references or information from other modalities, such as ASR-based metrics and speaker similarity.
+  </Step>
+  
+  <Step title="Distributional Metrics">
+    Metrics that evaluate statistical properties of audio collections, including FAD (Fréchet Audio Distance) and KID.
+  </Step>
+</Steps>
+
+### Real-World Applications
+
+<CardGroup cols={2}>
+  <Card title="Speech Synthesis" icon="microphone">
+    Evaluate TTS and voice conversion systems with metrics for naturalness, similarity, and intelligibility.
+  </Card>
+  
+  <Card title="Speech Enhancement" icon="waveform-lines">
+    Assess denoising and enhancement quality with signal-based and perceptual metrics.
+  </Card>
+  
+  <Card title="Audio Codecs" icon="file-audio">
+    Measure codec quality with MCD, PESQ, STOI, and perceptual MOS predictors.
+  </Card>
+  
+  <Card title="Singing Voice" icon="music">
+    Specialized metrics for singing voice synthesis and conversion, including SingMOS and chroma alignment.
+  </Card>
+</CardGroup>
+
+## Quick Example
+
+Evaluate audio quality in just a few lines:
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech.yaml \
+    --gt reference_audio/ \
+    --pred generated_audio/ \
+    --output_file results \
+    --io dir
+```
+
+This command evaluates all metrics defined in `speech.yaml` and saves detailed results to `results.txt`.
+
+<Note>
+  **New to audio evaluation?** Start with the [Quickstart](/quickstart) to run your first evaluation in minutes.
+</Note>
+
+## What's Inside
+
+### Core Metrics (Auto-Installed)
+
+- **Perceptual Quality**: UTMOS, DNSMOS, NISQA, Sheet-SSQA
+- **Intelligibility**: PESQ, STOI, TorchAudio-SQUIM
+- **Signal Metrics**: SDR, SAR, SIR, SI-SNR, CI-SDR
+- **Spectral Distance**: MCD (Mel Cepstral Distortion), F0 metrics
+- **Speaker Similarity**: Cosine similarity using ESPnet-SPK models
+- **Discrete Speech**: Speech BERT Score, Speech BLEU
+
+### Advanced Metrics (Optional Installation)
+
+- **LLM-Based Profiling**: Qwen2-Audio for 20+ speech characteristics
+- **Perceptual Audio**: DPAM, CDPAM distance metrics
+- **ASR-Based**: Word error rate (WER) with Whisper, ESPnet, OWSM
+- **Distributional**: FAD, KID for generative model evaluation
+- **Music-Specific**: Chroma alignment, singing technique assessment
+
+See the [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list with references.
+
+## Integration & Scalability
+
+VERSA is designed for both local experimentation and large-scale evaluation:
+
+<CodeGroup>
+```bash Local Machine
+# Single process evaluation
+python versa/bin/scorer.py \
+    --score_config config.yaml \
+    --pred audio.scp \
+    --gt reference.scp \
+    --output_file results
+```
+
+```bash Distributed (Slurm)
+# Split across multiple jobs
+./launch_slurm.sh \
+  pred_audio.scp \
+  gt_audio.scp \
+  results_dir/ \
+  32
+
+# Aggregate results
+cat results_dir/result/*.result.cpu.txt > final_results.txt
+```
+</CodeGroup>
+
+## Open Source & Widely Adopted
+
+<Info>
+  VERSA is used in production by leading speech research groups and has been integrated into major toolkits including ESPnet. Check the [incomplete list of toolkits and challenges](https://github.com/wavlab-speech/versa/blob/main/docs/users.md) using VERSA.
+</Info>
+
+## Get Started
+
+<CardGroup cols={3}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install VERSA and configure metric-specific dependencies
+  </Card>
+  
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Run your first evaluation in minutes with real examples
+  </Card>
+  
+  <Card title="GitHub" icon="github" href="https://github.com/wavlab-speech/versa">
+    Explore the source code and contribute to the project
+  </Card>
+</CardGroup>
+
+## Research & Citation
+
+VERSA was presented at NAACL 2025 and has been featured in multiple publications. If you use VERSA in your research, please cite:
+
+```bibtex
+@inproceedings{shi2025versa,
+title={{VERSA}: A Versatile Evaluation Toolkit for Speech, Audio, and Music},
+author={Jiatong Shi and Hye-jin Shim and Jinchuan Tian and Siddhant Arora and others},
+booktitle={2025 Annual Conference of the North American Chapter of the Association for Computational Linguistics},
+year={2025},
+url={https://openreview.net/forum?id=zU0hmbnyQm}
+}
+```
+
+<Tip>
+  **Want to learn more?** Check out the [presentation video from NAACL 2025](https://www.youtube.com/watch?v=e7TdOlzyJcE) or try the [interactive Colab demo](https://colab.research.google.com/drive/11c0vZxbSa8invMSfqM999tI3MnyAVsOp?usp=sharing).
+</Tip>

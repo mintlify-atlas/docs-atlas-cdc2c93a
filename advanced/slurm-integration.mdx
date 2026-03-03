@@ -1,0 +1,452 @@
+---
+title: 'Slurm Integration'
+description: 'Parallel processing of audio evaluations using Slurm workload manager'
+---
+
+## Overview
+
+VERSA provides built-in support for parallel processing on HPC clusters using Slurm. The `launch_slurm.sh` script automatically splits your dataset and distributes evaluation jobs across GPU and CPU nodes.
+
+## Prerequisites
+
+- Access to a Slurm-managed compute cluster
+- VERSA installed on all compute nodes
+- Shared filesystem accessible from all nodes
+- Configured Slurm partitions for GPU/CPU jobs
+
+## Quick Start
+
+```bash
+./launch_slurm.sh data/pred.scp data/gt.scp results/experiment1 10
+```
+
+This splits your data into 10 chunks and launches both GPU and CPU evaluation jobs.
+
+## Script Parameters
+
+### Required Arguments
+
+<ParamField path="pred_wavscp" type="string" required>
+  Path to the prediction wav.scp file containing audio files to evaluate.
+  
+  Format: Each line contains `<utterance_id> <audio_path>`
+</ParamField>
+
+<ParamField path="gt_wavscp" type="string" required>
+  Path to the ground truth wav.scp file for reference-based metrics.
+  
+  Use `"None"` (as a string) if only computing reference-free metrics.
+</ParamField>
+
+<ParamField path="score_dir" type="string" required>
+  Directory where results and logs will be stored.
+  
+  The script automatically creates subdirectories for organization.
+</ParamField>
+
+<ParamField path="split_size" type="integer" required>
+  Number of chunks to split the dataset into.
+  
+  Each chunk is processed as a separate Slurm job. Choose based on dataset size and available resources.
+</ParamField>
+
+### Optional Arguments
+
+<ParamField path="--cpu-only" type="flag">
+  Run only CPU-based metrics.
+  
+  Disables GPU job submission. Useful when GPU resources are unavailable or for CPU-only metrics.
+</ParamField>
+
+<ParamField path="--gpu-only" type="flag">
+  Run only GPU-based metrics.
+  
+  Disables CPU job submission. Use when evaluating only GPU-accelerated metrics.
+</ParamField>
+
+<ParamField path="--text" type="string">
+  Path to text file with transcriptions or descriptions.
+  
+  Format: Each line contains `<utterance_id> <text_content>`
+  
+  Required for text-dependent metrics like WER.
+</ParamField>
+
+## Environment Variables
+
+Customize resource allocation and cluster configuration:
+
+### Partition Configuration
+
+```bash
+export GPU_PARTITION=gpu-nodes    # Slurm partition for GPU jobs
+export CPU_PARTITION=cpu-nodes    # Slurm partition for CPU jobs
+```
+
+### Time Limits
+
+```bash
+export GPU_TIME=2-0:00:00        # 2 days (format: D-HH:MM:SS)
+export CPU_TIME=2-0:00:00        # 2 days
+```
+
+### Resource Allocation
+
+```bash
+export CPUS=8                     # CPUs per task (default: 8)
+export MEM=2000                   # Memory per CPU in MB (default: 2000)
+export GPU_TYPE=v100              # Specific GPU type (optional)
+```
+
+### Additional Options
+
+```bash
+export IO_TYPE=soundfile          # Audio I/O backend (default: soundfile)
+export CPU_OTHER_OPTS="--qos=normal"  # Extra Slurm options for CPU jobs
+export GPU_OTHER_OPTS="--qos=high"    # Extra Slurm options for GPU jobs
+```
+
+## Usage Examples
+
+### Basic Evaluation
+
+Evaluate both prediction and reference audio:
+
+```bash
+./launch_slurm.sh \
+  data/predictions.scp \
+  data/references.scp \
+  results/eval_run1 \
+  20
+```
+
+### Reference-Free Evaluation
+
+Evaluate only prediction audio without reference:
+
+```bash
+./launch_slurm.sh \
+  data/predictions.scp \
+  None \
+  results/eval_noref \
+  15
+```
+
+### CPU-Only Processing
+
+Run metrics that don't require GPU:
+
+```bash
+./launch_slurm.sh \
+  data/predictions.scp \
+  data/references.scp \
+  results/eval_cpu \
+  10 \
+  --cpu-only
+```
+
+### GPU-Only Processing
+
+Run only GPU-accelerated metrics:
+
+```bash
+./launch_slurm.sh \
+  data/predictions.scp \
+  data/references.scp \
+  results/eval_gpu \
+  10 \
+  --gpu-only
+```
+
+### With Text References
+
+Include transcriptions for WER and text-based metrics:
+
+```bash
+./launch_slurm.sh \
+  data/predictions.scp \
+  data/references.scp \
+  results/eval_with_text \
+  10 \
+  --text=data/transcripts.txt
+```
+
+### Custom Resource Configuration
+
+Specify GPU type and increase resources:
+
+```bash
+export GPU_TYPE=a100
+export CPUS=16
+export MEM=4000
+export GPU_TIME=4-0:00:00
+
+./launch_slurm.sh \
+  data/predictions.scp \
+  data/references.scp \
+  results/eval_large \
+  50
+```
+
+## Workflow Details
+
+<Steps>
+  <Step title="Data splitting">
+    The script splits input files into equal chunks:
+
+    ```bash
+    # For 1000 utterances split into 10 chunks = 100 lines per chunk
+    split -l 100 -d -a 3 predictions.scp score_dir/pred/predictions.scp_
+    ```
+
+    Creates files: `predictions.scp_000`, `predictions.scp_001`, ..., `predictions.scp_009`
+  </Step>
+
+  <Step title="Job submission">
+    For each chunk, the script submits Slurm jobs:
+
+    **GPU Job:**
+    ```bash
+    sbatch \
+      -p general \
+      --time 2-0:00:00 \
+      --cpus-per-task 8 \
+      --mem-per-cpu 2000M \
+      --gres=gpu:1 \
+      -J gpu_predictions.scp_000 \
+      -o score_dir/logs/gpu_predictions.scp_000_%j.out \
+      -e score_dir/logs/gpu_predictions.scp_000_%j.err \
+      ./egs/run_gpu.sh [args...]
+    ```
+
+    **CPU Job:**
+    ```bash
+    sbatch \
+      -p general \
+      --time 2-0:00:00 \
+      --cpus-per-task 8 \
+      --mem-per-cpu 2000M \
+      -J cpu_predictions.scp_000 \
+      -o score_dir/logs/cpu_predictions.scp_000_%j.out \
+      -e score_dir/logs/cpu_predictions.scp_000_%j.err \
+      ./egs/run_cpu.sh [args...]
+    ```
+  </Step>
+
+  <Step title="Job tracking">
+    Job IDs are saved to `score_dir/job_ids.txt`:
+
+    ```
+    GPU:12345678 CHUNK:1/10 FILE:predictions.scp_000
+    CPU:12345679 CHUNK:1/10 FILE:predictions.scp_000
+    GPU:12345680 CHUNK:2/10 FILE:predictions.scp_001
+    CPU:12345681 CHUNK:2/10 FILE:predictions.scp_001
+    ...
+    ```
+  </Step>
+
+  <Step title="Results aggregation">
+    After all jobs complete, merge results using the provided command:
+
+    ```bash
+    # Command printed by launch_slurm.sh
+    sbatch --dependency=afterok:12345678,12345679,... \
+      ./scripts/show_result.sh \
+      results/experiment1/result \
+      results/experiment1/final_results.txt
+    ```
+
+    The `--dependency=afterok` ensures this job runs only after all evaluation jobs succeed.
+  </Step>
+</Steps>
+
+## Directory Structure
+
+The script creates the following structure in `score_dir`:
+
+```
+score_dir/
+├── pred/                    # Split prediction files
+│   ├── predictions.scp_000
+│   ├── predictions.scp_001
+│   └── ...
+├── gt/                      # Split ground truth files (if provided)
+│   ├── references.scp_000
+│   ├── references.scp_001
+│   └── ...
+├── text/                    # Split text files (if provided)
+│   ├── transcripts.txt_000
+│   ├── transcripts.txt_001
+│   └── ...
+├── result/                  # Per-chunk results
+│   ├── predictions.scp_000.result.gpu.txt
+│   ├── predictions.scp_000.result.cpu.txt
+│   └── ...
+├── logs/                    # Slurm output logs
+│   ├── gpu_predictions.scp_000_12345678.out
+│   ├── gpu_predictions.scp_000_12345678.err
+│   ├── cpu_predictions.scp_000_12345679.out
+│   ├── cpu_predictions.scp_000_12345679.err
+│   └── ...
+├── job_ids.txt             # Tracking file with all job IDs
+└── final_results.txt       # Merged results (after aggregation)
+```
+
+## Monitoring Jobs
+
+### Check job status
+
+```bash
+squeue -u $(whoami)
+```
+
+### View real-time logs
+
+```bash
+tail -f score_dir/logs/gpu_predictions.scp_000_*.out
+```
+
+### Check for errors
+
+```bash
+grep -r "Error" score_dir/logs/*.err
+```
+
+### Cancel all jobs
+
+```bash
+scancel -u $(whoami)
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Jobs fail immediately">
+    Check the error logs in `score_dir/logs/`:
+
+    ```bash
+    cat score_dir/logs/gpu_predictions.scp_000_*.err
+    ```
+
+    Common issues:
+    - Incorrect partition names
+    - Insufficient resources requested
+    - Missing dependencies on compute nodes
+    - Incorrect file paths (must be absolute or relative to job working directory)
+  </Accordion>
+
+  <Accordion title="Out of memory errors">
+    Increase memory allocation:
+
+    ```bash
+    export MEM=4000  # Increase from default 2000MB
+    ```
+
+    Or reduce the number of concurrent metrics in your config files.
+  </Accordion>
+
+  <Accordion title="Jobs timeout">
+    Increase time limits:
+
+    ```bash
+    export GPU_TIME=7-0:00:00  # 7 days
+    export CPU_TIME=7-0:00:00
+    ```
+
+    Or split data into more chunks to reduce per-job processing time.
+  </Accordion>
+
+  <Accordion title="GPU not detected">
+    Verify GPU resources:
+
+    ```bash
+    sinfo -p gpu-partition
+    ```
+
+    Check the partition has GPUs available and your account has access.
+  </Accordion>
+
+  <Accordion title="File not found errors">
+    Ensure all paths are accessible from compute nodes:
+
+    ```bash
+    # Test on compute node
+    srun -p general ls -la /path/to/audio/files
+    ```
+
+    Use absolute paths or ensure relative paths work from the job submission directory.
+  </Accordion>
+</AccordionGroup>
+
+## Performance Optimization
+
+<Tip>
+  **Choosing split_size**: 
+  - Too few chunks: Jobs take longer, poor parallelization
+  - Too many chunks: Overhead from job scheduling and result merging
+  - Recommended: 10-50 chunks depending on dataset size
+  - Rule of thumb: Each chunk should process 50-500 utterances
+</Tip>
+
+### Balancing GPU vs CPU
+
+- **GPU metrics**: UTMOS, NISQA, speaker similarity, neural network-based metrics
+- **CPU metrics**: PESQ, STOI, signal processing metrics
+
+Separate jobs by metric type to optimize resource usage:
+
+```yaml egs/universa_prepare/gpu_subset.yaml
+score:
+  - name: pseudo_mos
+    predictor: utmos
+  - name: nisqa
+  - name: speaker
+```
+
+```yaml egs/universa_prepare/cpu_subset.yaml
+score:
+  - name: pesq
+  - name: stoi
+  - name: signal_metric
+```
+
+## Advanced Configuration
+
+### Custom Slurm Scripts
+
+Modify `egs/run_gpu.sh` and `egs/run_cpu.sh` to customize the evaluation command:
+
+```bash egs/run_gpu.sh
+#!/bin/bash
+#SBATCH directives handled by launch_slurm.sh
+
+source activate versa
+
+python -m versa.bin.score \
+  --pred_wavscp "$1" \
+  --gt_wavscp "$2" \
+  --output "$3" \
+  --config "$4" \
+  --io "$5" \
+  --text "$6" \
+  --use_gpu
+```
+
+### Multiple Metric Configurations
+
+Run different metric sets in parallel:
+
+```bash
+# Quality metrics
+./launch_slurm.sh data/pred.scp data/gt.scp results/quality 10 --gpu-only
+
+# Intelligibility metrics  
+./launch_slurm.sh data/pred.scp data/gt.scp results/intelligibility 10 --cpu-only
+
+# Reference-free metrics
+./launch_slurm.sh data/pred.scp None results/reference_free 10
+```
+
+<Note>
+  The script is designed for flexibility. Modify environment variables and Slurm parameters to match your cluster's specific configuration and policies.
+</Note>

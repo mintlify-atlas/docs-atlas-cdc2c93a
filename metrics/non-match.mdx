@@ -1,0 +1,121 @@
+---
+title: "Non-Match Metrics"
+description: "Metrics using non-matching references like text transcripts or different audio samples"
+---
+
+Non-match metrics use references that don't directly correspond to the evaluated audio. These include text transcripts for ASR evaluation, text prompts for semantic similarity, or non-matching audio samples for perceptual quality assessment.
+
+<Info>
+  Metrics marked with **Auto-Install** are automatically installed with VERSA. Others require manual installation from their respective code sources.
+</Info>
+
+## Non-Matching Reference Quality Assessment
+
+| Number | Auto-Install | Metric Name | Key in Config | Key in Report | Code Source | References |
+|--------|--------------|-------------|---------------|---------------|-------------|------------|
+| 1 | | NORESQA: A Framework for Speech Quality Assessment using Non-Matching References | `noresqa` | `noresqa` | [Noresqa](https://github.com/shimhz/Noresqa.git) | [Paper](https://proceedings.neurips.cc/paper/2021/file/bc6d753857fe3dd4275dff707dedf329-Paper.pdf) |
+| 2 | ✓ | MOS in TorchAudio-Squim | `squim_ref` | `torch_squim_mos` | [torch_squim](https://pytorch.org/audio/main/tutorials/squim_tutorial.html) | [paper](https://arxiv.org/abs/2304.01448) |
+| 8 | | NOMAD: Unsupervised Learning of Perceptual Embeddings For Speech Enhancement and Non-Matching Reference Audio Quality Assessment | `nomad` | `nomad` | [Nomad](https://github.com/shimhz/nomad/tree/main) | [paper](https://arxiv.org/abs/2309.16284) |
+
+## Speech Recognition Error Rates
+
+Automatic Speech Recognition (ASR) based metrics using text transcripts.
+
+| Number | Auto-Install | Metric Name | Key in Config | Key in Report | Code Source | References |
+|--------|--------------|-------------|---------------|---------------|-------------|------------|
+| 3 | ✓ | ESPnet Speech Recognition-based Error Rate | `espnet_wer` | `espnet_wer` | [ESPnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/pdf/1804.00015) |
+| 4 | ✓ | ESPnet-OWSM Speech Recognition-based Error Rate | `owsm_wer` | `owsm_wer` | [ESPnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/2309.13876) |
+| 5 | ✓ | OpenAI-Whisper Speech Recognition-based Error Rate | `whisper_wer` | `whisper_wer` | [Whisper](https://github.com/openai/whisper) | [paper](https://arxiv.org/abs/2212.04356) |
+| 11 | | Log Likelihood Ratio (LLR) | `pysepm` | `pysepm_llr` | [pysepm](https://github.com/shimhz/pysepm.git) | [Paper](https://ecs.utdallas.edu/loizou/speech/obj_paper_jan08.pdf) |
+
+## Embedding Similarity Metrics
+
+Metrics that compare learned embeddings for speaker, emotion, or singer similarity.
+
+| Number | Auto-Install | Metric Name | Key in Config | Key in Report | Code Source | References |
+|--------|--------------|-------------|---------------|---------------|-------------|------------|
+| 6 | | Emotion2vec similarity (emo2vec) | `emo2vec_similarity` | `emotion_similarity` | [emo2vec](https://github.com/ftshijt/emotion2vec/tree/main) | [paper](https://arxiv.org/abs/2312.15185) |
+| 7 | ✓ | Speaker Embedding Similarity | `speaker` | `spk_similarity` | [espnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/2401.17230) |
+| 16 | | Singer Embedding Similarity | `singer` | `singer_similarity` | [SSL-Singer-Identity](https://github.com/SonyCSLParis/ssl-singer-identity) | [paper](https://hal.science/hal-04186048v1) |
+
+## Text & Prompt-Based Metrics
+
+Metrics that use text prompts or descriptions for evaluation.
+
+| Number | Auto-Install | Metric Name | Key in Config | Key in Report | Code Source | References |
+|--------|--------------|-------------|---------------|---------------|-------------|------------|
+| 9 | | Contrastive Language-Audio Pretraining Score (CLAP Score) | `clap_score` | `clap_score` | [fadtk](https://github.com/gudgud96/frechet-audio-distance) | [paper](https://arxiv.org/abs/2301.12661) |
+| 10 | | Accompaniment Prompt Adherence (APA) | `apa` | `apa` | [Sony-audio-metrics](https://github.com/SonyCSLParis/audio-metrics) | [paper](https://arxiv.org/abs/2404.00775) |
+
+## Unified Models with Text Reference
+
+| Number | Auto-Install | Metric Name | Key in Config | Key in Report | Code Source | References |
+|--------|--------------|-------------|---------------|---------------|-------------|------------|
+| 12 | | Uni-VERSA (Versatile Speech Assessment with a Unified Framework) with Text Reference | `universa_textref` | `universa_score` | [Uni-VERSA](https://huggingface.co/collections/espnet/universa-6834e7c0a28225bffb6e2526) | [paper](https://arxiv.org/abs/2505.20741) |
+| 13 | | Uni-VERSA (Versatile Speech Assessment with a Unified Framework) with Full Reference | `universa_fullref` | `universa_score` | [Uni-VERSA](https://huggingface.co/collections/espnet/universa-6834e7c0a28225bffb6e2526) | [paper](https://arxiv.org/abs/2505.20741) |
+| 14 | | ARECHO (Audio Reference Echo Cancellation and Codec Quality Assessment) with Text Reference | `arecho_textref` | `arecho_score` | [ARECHO](https://huggingface.co/espnet/arecho_base_v0) | [paper](https://arxiv.org/abs/2505.20741) |
+| 15 | | ARECHO (Audio Reference Echo Cancellation and Codec Quality Assessment) with Full Reference | `arecho_fullref` | `arecho_score` | [ARECHO](https://huggingface.co/espnet/arecho_base_v0) | [paper](https://arxiv.org/abs/2505.20741) |
+
+<Note>
+  Non-match metrics are particularly useful when you don't have exact reference audio but have alternative references like transcripts, prompts, or non-matching audio samples.
+</Note>
+
+## Usage Guidelines
+
+<AccordionGroup>
+  <Accordion title="ASR Evaluation">
+    Use Word Error Rate (WER) metrics to evaluate speech recognition quality:
+    - **ESPnet WER**: For general-purpose ASR evaluation
+    - **OWSM WER**: For multilingual ASR with Open Whisper-style models
+    - **Whisper WER**: For OpenAI Whisper-based evaluation
+    
+    Lower WER indicates better intelligibility and clarity.
+  </Accordion>
+  
+  <Accordion title="Speaker Similarity">
+    Evaluate whether generated speech maintains speaker identity:
+    - **Speaker Embedding Similarity**: For voice conversion and cloning
+    - **Singer Similarity**: Specifically for singing voice synthesis
+    
+    Higher similarity scores indicate better preservation of speaker characteristics.
+  </Accordion>
+  
+  <Accordion title="Emotion & Expression">
+    Assess emotional content and expression:
+    - **Emotion2vec similarity**: Compare emotional characteristics between audio samples
+    
+    Useful for evaluating expressive TTS and voice conversion systems.
+  </Accordion>
+  
+  <Accordion title="Text-Audio Alignment">
+    Evaluate how well audio matches text descriptions or prompts:
+    - **CLAP Score**: For general text-to-audio alignment
+    - **Accompaniment Prompt Adherence (APA)**: For music generation tasks
+    
+    These metrics help ensure generated audio matches user intentions.
+  </Accordion>
+  
+  <Accordion title="Unified Assessment">
+    For comprehensive evaluation with multiple reference types:
+    - **Uni-VERSA**: Supports text and full references
+    - **ARECHO**: Specialized for echo cancellation and codec quality
+    
+    These models can adapt to different reference types for flexible evaluation.
+  </Accordion>
+</AccordionGroup>
+
+## Reference Type Comparison
+
+| Metric Category | Reference Type | Use Case | Example |
+|----------------|----------------|----------|----------|
+| ASR-based | Text transcript | Intelligibility evaluation | WER, CER |
+| Embedding-based | Different audio sample | Speaker/emotion similarity | Speaker similarity, Emotion2vec |
+| Prompt-based | Text description | Semantic alignment | CLAP Score, APA |
+| Non-matching audio | Clean speech (different content) | Quality without exact match | NORESQA, NOMAD |
+
+<Tip>
+  When choosing between ASR-based metrics, consider your target domain:
+  - ESPnet WER: General purpose, customizable
+  - OWSM WER: Best for multilingual content
+  - Whisper WER: Robust to accents and noisy conditions
+</Tip>

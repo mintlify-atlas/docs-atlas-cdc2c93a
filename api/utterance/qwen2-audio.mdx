@@ -1,0 +1,328 @@
+---
+title: Qwen2-Audio
+description: Comprehensive speech property analysis using Qwen2-Audio multimodal model
+---
+
+Qwen2-Audio provides AI-powered analysis of various speech properties including speaker characteristics, voice properties, speech content, delivery style, and recording environment.
+
+## Model Setup
+
+<CodeGroup>
+```python Function Signature
+qwen2_model_setup(
+    model_tag="Qwen/Qwen2-Audio-7B-Instruct",
+    start_prompt="The following is a conversation with an AI assistant. The assistant is helpful, honest, and harmless."
+)
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField path="model_tag" type="str" default="Qwen/Qwen2-Audio-7B-Instruct">
+  Hugging Face model identifier. Use `"default"` for the default 7B model
+</ParamField>
+
+<ParamField path="start_prompt" type="str">
+  System prompt for the conversation context
+</ParamField>
+
+### Returns
+
+<ResponseField name="qwen_utils" type="dict">
+  Dictionary containing:
+  - `model` - Qwen2AudioForConditionalGeneration model
+  - `processor` - AutoProcessor for the model
+  - `start_conversation` - Initial conversation setup
+</ResponseField>
+
+## Available Metrics
+
+### 1. Speaker Characteristics
+
+<CodeGroup>
+```python Speaker Count
+qwen2_speaker_count_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speaker Gender
+qwen2_speaker_gender_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speaker Age
+qwen2_speaker_age_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speech Impairment
+qwen2_speech_impairment_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+</CodeGroup>
+
+### 2. Voice Properties
+
+<CodeGroup>
+```python Voice Pitch
+qwen2_voice_pitch_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Pitch Range
+qwen2_pitch_range_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Voice Type
+qwen2_voice_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speech Volume
+qwen2_speech_volume_level_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+</CodeGroup>
+
+### 3. Speech Content
+
+<CodeGroup>
+```python Language
+qwen2_language_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speech Register
+qwen2_speech_register_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Vocabulary Complexity
+qwen2_vocabulary_complexity_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speech Purpose
+qwen2_speech_purpose_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+</CodeGroup>
+
+### 4. Speech Delivery
+
+<CodeGroup>
+```python Speech Emotion
+qwen2_speech_emotion_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speech Clarity
+qwen2_speech_clarity_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speech Rate
+qwen2_speech_rate_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Speaking Style
+qwen2_speaking_style_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Laughter/Crying
+qwen2_laughter_crying_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+</CodeGroup>
+
+### 5. Interaction Patterns
+
+<CodeGroup>
+```python Overlapping Speech
+qwen2_overlapping_speech_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+</CodeGroup>
+
+### 6. Recording Environment
+
+<CodeGroup>
+```python Background Environment
+qwen2_speech_background_environment_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Recording Quality
+qwen2_recording_quality_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+
+```python Channel Type
+qwen2_channel_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+</CodeGroup>
+
+### 7. Vocal Evaluation
+
+<CodeGroup>
+```python Singing Technique
+qwen2_singing_technique_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
+```
+</CodeGroup>
+
+## Common Parameters
+
+All metric functions share the same parameter structure:
+
+<ParamField path="qwen_utils" type="dict" required>
+  Utility dictionary from `qwen2_model_setup()` containing model, processor, and conversation
+</ParamField>
+
+<ParamField path="pred_x" type="numpy.ndarray" required>
+  Audio signal as numpy array (1D)
+</ParamField>
+
+<ParamField path="fs" type="int" default="16000">
+  Sampling rate in Hz. Audio is automatically resampled to match processor requirements
+</ParamField>
+
+<ParamField path="custom_prompt" type="str">
+  Optional custom prompt to override the default prompt for the metric
+</ParamField>
+
+## Returns
+
+Each metric returns a dictionary with a single key-value pair:
+
+<ResponseField name="qwen_{metric_name}" type="str">
+  Model's textual response analyzing the specified property
+</ResponseField>
+
+## Usage Examples
+
+### Basic Usage
+
+```python
+import numpy as np
+from versa import qwen2_model_setup, qwen2_speech_emotion_metric
+
+# Setup model (do this once)
+qwen_utils = qwen2_model_setup()
+
+# Load your audio
+audio = np.random.random(16000)  # Replace with actual audio
+
+# Analyze emotion
+result = qwen2_speech_emotion_metric(
+    qwen_utils=qwen_utils,
+    pred_x=audio,
+    fs=16000
+)
+
+print(f"Emotion: {result['qwen_speech_emotion']}")
+```
+
+### Multiple Analyses
+
+```python
+import numpy as np
+from versa import (
+    qwen2_model_setup,
+    qwen2_speaker_count_metric,
+    qwen2_speaker_gender_metric,
+    qwen2_speech_emotion_metric,
+    qwen2_recording_quality_metric
+)
+
+# Setup once
+qwen_utils = qwen2_model_setup()
+audio = np.random.random(48000)  # Replace with actual audio
+fs = 48000
+
+# Run multiple analyses
+analyses = {
+    "speaker_count": qwen2_speaker_count_metric(qwen_utils, audio, fs),
+    "speaker_gender": qwen2_speaker_gender_metric(qwen_utils, audio, fs),
+    "emotion": qwen2_speech_emotion_metric(qwen_utils, audio, fs),
+    "quality": qwen2_recording_quality_metric(qwen_utils, audio, fs)
+}
+
+for metric, result in analyses.items():
+    print(f"{metric}: {result}")
+```
+
+### Custom Prompt
+
+```python
+import numpy as np
+from versa import qwen2_model_setup, qwen2_base_metric
+
+qwen_utils = qwen2_model_setup()
+audio = np.random.random(16000)
+
+# Use custom prompt
+custom_prompt = """Analyze this audio and describe the speaker's 
+emotional state in detail, including any subtle nuances."""
+
+result = qwen2_base_metric(
+    qwen_utils=qwen_utils,
+    pred_x=audio,
+    fs=16000,
+    custom_prompt=custom_prompt,
+    max_length=1000
+)
+
+print(result)
+```
+
+## Category Details
+
+### Speaker Count
+Identifies number of distinct speakers (1-10)
+
+**Example outputs**: `"1"`, `"2"`, `"4"`
+
+### Speaker Gender
+Identifies perceived gender of speaker(s)
+
+**Example outputs**: `"Male"`, `"Female"`, `"Multiple speakers with mixed genders"`
+
+### Speaker Age
+Classifies age group
+
+**Categories**: Child, Teen, Young adult, Middle-aged adult, Senior
+
+### Voice Pitch
+Analyzes pitch level
+
+**Categories**: Very high, High, Medium, Low, Very low
+
+### Speech Emotion
+Identifies dominant emotion
+
+**Categories**: Neutral, Happy, Sad, Angry, Fearful, Surprised, Disgusted, Other
+
+### Recording Quality
+Assesses technical quality
+
+**Categories**: Professional, Good, Fair, Poor, Very poor
+
+### Singing Technique
+Identifies singing style
+
+**Categories**: Breathy, Falsetto, Mixed Voice, Pharyngeal, Glissando, Vibrato, Control
+
+## Installation
+
+```bash
+pip install transformers accelerate
+```
+
+<Note>
+  Requires latest version of transformers. If you encounter `KeyError` for Qwen2Audio, update transformers:
+  ```bash
+  pip install --upgrade transformers
+  ```
+</Note>
+
+## Model Requirements
+
+| Aspect | Requirement |
+|--------|-------------|
+| Model Size | ~14 GB (7B parameters) |
+| GPU Memory | Recommended 16+ GB VRAM |
+| Device | Auto-selected with `device_map="auto"` |
+| Input Audio | Automatically resampled |
+
+## Performance Notes
+
+<Warning>
+  **Inference Speed**: Qwen2-Audio is a large language model. Inference may take several seconds per audio sample. Consider batching for production use.
+</Warning>
+
+<Note>
+  **Determinism**: Results may vary slightly between runs due to the generative nature of the model.
+</Note>

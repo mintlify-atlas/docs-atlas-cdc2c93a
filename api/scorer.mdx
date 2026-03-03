@@ -1,0 +1,382 @@
+---
+title: 'Scorer'
+description: 'Command-line interface and core scoring functions for speech evaluation'
+---
+
+## Overview
+
+The scorer module provides the main interface for evaluating speech synthesis quality. It supports multiple I/O formats, GPU acceleration, and extensive configuration options for various metrics.
+
+## Command-Line Interface
+
+### Main Function
+
+The scorer can be invoked from the command line using the `versa-scorer` command or by running the scorer script directly.
+
+```bash
+python -m versa.bin.scorer \
+  --pred generated_audio.scp \
+  --score_config config.yaml \
+  --output_file results.jsonl
+```
+
+### CLI Arguments
+
+<ParamField path="pred" type="string" required>
+  Path to wav.scp file containing generated waveforms. Supports multiple I/O formats based on the `--io` parameter.
+</ParamField>
+
+<ParamField path="score_config" type="string" required>
+  Path to YAML configuration file specifying which metrics to compute and their parameters.
+</ParamField>
+
+<ParamField path="gt" type="string" default="None">
+  Path to wav.scp file for ground truth waveforms. Required for reference-based metrics like MCD, PESQ, and speaker similarity.
+</ParamField>
+
+<ParamField path="text" type="string" default="None">
+  Path to ground truth transcription file. Required for text-based metrics like WER/CER. Format: `utterance_id transcription`
+</ParamField>
+
+<ParamField path="output_file" type="string" default="None">
+  Path to write evaluation results. Results are written in JSONL format (one JSON object per line).
+</ParamField>
+
+<ParamField path="cache_folder" type="string" default="None">
+  Directory path for caching model weights and intermediate results.
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="false">
+  Enable GPU acceleration for compatible metrics. Significantly speeds up neural network-based evaluations.
+</ParamField>
+
+<ParamField path="io" type="string" default="kaldi">
+  I/O interface to use for loading audio files.
+  
+  **Options:**
+  - `kaldi`: Kaldi-style wav.scp with pipes (e.g., `sox file.wav -t wav - |`)
+  - `soundfile`: Simple wav.scp with file paths
+  - `dir`: Directory containing audio files
+</ParamField>
+
+<ParamField path="verbose" type="int" default="1">
+  Logging verbosity level.
+  
+  **Levels:**
+  - `0`: Warnings only
+  - `1`: Info messages (default)
+  - `2`: Debug messages
+</ParamField>
+
+<ParamField path="rank" type="int" default="0">
+  Process rank for batch processing. Used to specify GPU device when `use_gpu=True`. GPU device is calculated as `rank % num_gpus`.
+</ParamField>
+
+<ParamField path="no_match" type="bool" default="false">
+  Skip matching between generated and ground truth files. Useful when files have different naming schemes.
+</ParamField>
+
+## Core Functions
+
+### audio_loader_setup
+
+Sets up audio file loading based on the specified I/O interface.
+
+```python
+from versa.scorer_shared import audio_loader_setup
+
+audio_files = audio_loader_setup(
+    audio="path/to/wav.scp",
+    io="kaldi"
+)
+```
+
+<ParamField path="audio" type="string" required>
+  Path to audio file list or directory.
+</ParamField>
+
+<ParamField path="io" type="string" required>
+  I/O interface type: `kaldi`, `soundfile`, or `dir`.
+</ParamField>
+
+**Returns:** Dictionary mapping utterance IDs to file paths or audio data.
+
+### load_score_modules
+
+Loads and initializes scoring modules based on configuration.
+
+```python
+from versa.scorer_shared import load_score_modules
+import yaml
+
+with open("config.yaml") as f:
+    score_config = yaml.full_load(f)
+
+modules = load_score_modules(
+    score_config=score_config,
+    use_gt=True,
+    use_gt_text=False,
+    use_gpu=True
+)
+```
+
+<ParamField path="score_config" type="list" required>
+  List of metric configurations loaded from YAML file. Each config is a dictionary with `name` and metric-specific parameters.
+</ParamField>
+
+<ParamField path="use_gt" type="bool" default="true">
+  Whether ground truth audio is available. Reference-based metrics will be skipped if False.
+</ParamField>
+
+<ParamField path="use_gt_text" type="bool" default="false">
+  Whether ground truth text transcriptions are available. Text-based metrics will be skipped if False.
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="false">
+  Enable GPU acceleration for model-based metrics.
+</ParamField>
+
+**Returns:** Dictionary of initialized scoring modules with their configurations.
+
+### list_scoring
+
+Performs utterance-level scoring across all generated files.
+
+```python
+from versa.scorer_shared import list_scoring
+
+score_info = list_scoring(
+    gen_files=gen_audio_dict,
+    score_modules=modules,
+    gt_files=gt_audio_dict,
+    text_info=text_dict,
+    output_file="results.jsonl",
+    io="kaldi",
+    batch_size=1
+)
+```
+
+<ParamField path="gen_files" type="dict" required>
+  Dictionary mapping utterance IDs to generated audio files.
+</ParamField>
+
+<ParamField path="score_modules" type="dict" required>
+  Initialized scoring modules from `load_score_modules()`.
+</ParamField>
+
+<ParamField path="gt_files" type="dict" default="None">
+  Dictionary mapping utterance IDs to ground truth audio files.
+</ParamField>
+
+<ParamField path="text_info" type="dict" default="None">
+  Dictionary mapping utterance IDs to reference transcriptions.
+</ParamField>
+
+<ParamField path="output_file" type="string" default="None">
+  Path to output file. If provided, results are written incrementally in JSONL format.
+</ParamField>
+
+<ParamField path="io" type="string" default="kaldi">
+  I/O interface type for loading audio.
+</ParamField>
+
+<ParamField path="batch_size" type="int" default="1">
+  Number of utterances to process before writing to output file.
+</ParamField>
+
+**Returns:** List of dictionaries containing scores for each utterance.
+
+### load_corpus_modules
+
+Loads corpus-level scoring modules (e.g., FAD, KID).
+
+```python
+from versa.scorer_shared import load_corpus_modules
+
+corpus_modules = load_corpus_modules(
+    score_config=score_config,
+    cache_folder="versa_cache",
+    use_gpu=True,
+    io="kaldi"
+)
+```
+
+<ParamField path="score_config" type="list" required>
+  List of corpus metric configurations.
+</ParamField>
+
+<ParamField path="cache_folder" type="string" default="versa_cache">
+  Directory for caching embeddings and model weights.
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="false">
+  Enable GPU acceleration.
+</ParamField>
+
+<ParamField path="io" type="string" default="kaldi">
+  I/O interface type.
+</ParamField>
+
+**Returns:** Dictionary of initialized corpus-level scoring modules.
+
+### corpus_scoring
+
+Performs corpus-level evaluation.
+
+```python
+from versa.scorer_shared import corpus_scoring
+
+corpus_scores = corpus_scoring(
+    gen_files="generated.scp",
+    score_modules=corpus_modules,
+    base_files="baseline.scp",
+    text_info=None,
+    output_file="corpus_results.yaml"
+)
+```
+
+<ParamField path="gen_files" type="string" required>
+  Path to generated audio file list.
+</ParamField>
+
+<ParamField path="score_modules" type="dict" required>
+  Initialized corpus scoring modules.
+</ParamField>
+
+<ParamField path="base_files" type="string" default="None">
+  Path to baseline/reference audio for distributional metrics like FAD.
+</ParamField>
+
+<ParamField path="text_info" type="dict" default="None">
+  Text information (currently unused for corpus metrics).
+</ParamField>
+
+<ParamField path="output_file" type="string" default="None">
+  Path to save corpus-level results in YAML format.
+</ParamField>
+
+**Returns:** Dictionary containing corpus-level metric scores.
+
+### load_summary
+
+Computes summary statistics from utterance-level scores.
+
+```python
+from versa.scorer_shared import load_summary
+
+summary = load_summary(score_info)
+print(summary)
+# {'utmos': 3.45, 'pesq': 2.87, 'whisper_wer': 150, ...}
+```
+
+<ParamField path="score_info" type="list" required>
+  List of score dictionaries returned by `list_scoring()`.
+</ParamField>
+
+**Returns:** Dictionary with averaged metrics (or summed for WER/CER).
+
+## Usage Examples
+
+### Basic Evaluation
+
+```python
+import yaml
+from versa.scorer_shared import (
+    audio_loader_setup,
+    load_score_modules,
+    list_scoring,
+    load_summary
+)
+
+# Load audio files
+gen_files = audio_loader_setup("generated.scp", io="kaldi")
+gt_files = audio_loader_setup("ground_truth.scp", io="kaldi")
+
+# Load configuration
+with open("config.yaml") as f:
+    config = yaml.full_load(f)
+
+# Initialize metrics
+modules = load_score_modules(
+    score_config=config,
+    use_gt=True,
+    use_gpu=True
+)
+
+# Evaluate
+scores = list_scoring(
+    gen_files=gen_files,
+    score_modules=modules,
+    gt_files=gt_files,
+    output_file="results.jsonl"
+)
+
+# Get summary
+summary = load_summary(scores)
+print(f"Average UTMOS: {summary.get('utmos', 'N/A')}")
+```
+
+### Evaluation with Text Reference
+
+```python
+# Load text references
+text_info = {}
+with open("transcriptions.txt") as f:
+    for line in f:
+        key, text = line.strip().split(maxsplit=1)
+        text_info[key] = text
+
+# Initialize with text support
+modules = load_score_modules(
+    score_config=config,
+    use_gt=True,
+    use_gt_text=True,
+    use_gpu=True
+)
+
+# Evaluate with text
+scores = list_scoring(
+    gen_files=gen_files,
+    score_modules=modules,
+    gt_files=gt_files,
+    text_info=text_info,
+    output_file="results_with_wer.jsonl"
+)
+```
+
+### Corpus-Level Evaluation
+
+```python
+from versa.scorer_shared import load_corpus_modules, corpus_scoring
+
+# Load corpus modules (e.g., FAD)
+corpus_modules = load_corpus_modules(
+    score_config=config,
+    cache_folder="versa_cache",
+    use_gpu=True
+)
+
+# Compute corpus metrics
+corpus_scores = corpus_scoring(
+    gen_files="generated.scp",
+    score_modules=corpus_modules,
+    base_files="real_data.scp",
+    output_file="fad_results.yaml"
+)
+
+print(f"FAD Score: {corpus_scores.get('fad_default', 'N/A')}")
+```
+
+## Notes
+
+<Note>
+  When using GPU acceleration with multiple processes, ensure each process gets assigned to a different GPU using the `--rank` parameter. The GPU device is automatically calculated as `rank % torch.cuda.device_count()`.
+</Note>
+
+<Warning>
+  Ground truth and generated audio files must have matching keys in their respective .scp files unless `--no_match` is specified.
+</Warning>
+
+<Info>
+  Audio files are automatically resampled if the sampling rates between generated and ground truth audio don't match. The higher sample rate audio will be downsampled to match the lower rate.
+</Info>

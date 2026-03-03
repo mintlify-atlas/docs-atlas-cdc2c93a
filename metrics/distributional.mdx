@@ -1,0 +1,207 @@
+---
+title: "Distributional Metrics"
+description: "Metrics that evaluate statistical properties across audio distributions"
+---
+
+Distributional metrics evaluate the statistical properties of audio datasets rather than individual samples. These metrics are essential for evaluating generative models, ensuring dataset diversity, and detecting mode collapse.
+
+<Info>
+  Most distributional metrics require manual installation from their respective code sources. These metrics typically require a reference dataset for comparison.
+</Info>
+
+## Overview
+
+Distributional metrics compare the statistical properties of two audio datasets (e.g., generated vs. real audio). They are particularly valuable for:
+
+- Evaluating generative models (GANs, diffusion models, etc.)
+- Detecting mode collapse in generation
+- Assessing dataset diversity and coverage
+- Comparing distributions across different audio corpora
+
+<Note>
+  These metrics are currently **in verification** status in VERSA. They require careful setup and typically need large datasets for meaningful evaluation.
+</Note>
+
+## Distance-Based Metrics
+
+Metrics that measure the distance between embedding distributions.
+
+| Number | Auto-Install | Metric Name | Key in Config | Key in Report | Code Source | References |
+|--------|--------------|-------------|---------------|---------------|-------------|------------|
+| 1 | | Frechet Audio Distance (FAD) | `fad` | `fad` | [fadtk](https://github.com/microsoft/fadtk) | [paper](https://arxiv.org/abs/1812.08466) |
+| 2 | | Kullback-Leibler Divergence on Embedding Distribution | `kl_embedding` | `kl_embedding` | [Stability-AI](https://github.com/Stability-AI/stable-audio-metrics) | |
+| 5 | | KID: Kernel Distance Metric for Audio/Music Quality | - | - | [KID](https://github.com/SonyCSLParis/audio-metrics/tree/main) | [Paper](https://arxiv.org/abs/1812.08466) |
+
+## Density & Coverage Metrics
+
+Metrics that assess the density and coverage of generated audio distributions.
+
+| Number | Auto-Install | Metric Name | Key in Config | Key in Report | Code Source | References |
+|--------|--------------|-------------|---------------|---------------|-------------|------------|
+| 3 | | Audio Density Score | `audio_density_coverage` | `audio_density` | [Sony-audio-metrics](https://github.com/SonyCSLParis/audio-metrics) | [paper](https://arxiv.org/abs/2002.09797) |
+| 4 | | Audio Coverage Score | `audio_density_coverage` | `audio_coverage` | [Sony-audio-metrics](https://github.com/SonyCSLParis/audio-metrics) | [paper](https://arxiv.org/abs/2002.09797) |
+
+## Detailed Metric Descriptions
+
+<AccordionGroup>
+  <Accordion title="Frechet Audio Distance (FAD)">
+    **Frechet Audio Distance** measures the distance between feature distributions of real and generated audio.
+    
+    - Inspired by Frechet Inception Distance (FID) for images
+    - Uses pre-trained audio embeddings (typically from VGGish or similar models)
+    - Lower FAD scores indicate better similarity to real audio
+    - Widely used for evaluating audio generation models
+    
+    **Installation**: `pip install fadtk`
+    
+    **Use cases**:
+    - Evaluating text-to-audio models
+    - Comparing different generative model architectures
+    - Tracking training progress of generative models
+  </Accordion>
+  
+  <Accordion title="KL Divergence on Embeddings">
+    **Kullback-Leibler Divergence** measures the difference between two probability distributions.
+    
+    - Computes divergence between embedding distributions
+    - Asymmetric metric (KL(P||Q) ≠ KL(Q||P))
+    - Lower values indicate more similar distributions
+    - Sensitive to distribution outliers
+    
+    **Use cases**:
+    - Fine-grained distribution comparison
+    - Detecting distribution shift
+    - Quality control for audio datasets
+  </Accordion>
+  
+  <Accordion title="Audio Density Score">
+    **Audio Density** measures how concentrated the generated samples are in the feature space.
+    
+    - High density: Generated samples are similar to each other
+    - Low density: Generated samples are diverse
+    - Helps detect mode collapse
+    
+    **Use cases**:
+    - Detecting mode collapse in GANs
+    - Evaluating diversity of generated audio
+    - Balancing quality vs. diversity trade-offs
+  </Accordion>
+  
+  <Accordion title="Audio Coverage Score">
+    **Audio Coverage** measures how well the generated distribution covers the real distribution.
+    
+    - High coverage: Generated samples cover most modes in real data
+    - Low coverage: Generated samples miss important modes
+    - Complementary to density metrics
+    
+    **Use cases**:
+    - Ensuring comprehensive dataset generation
+    - Detecting missing modes in generation
+    - Evaluating conditional generation models
+  </Accordion>
+  
+  <Accordion title="Kernel Inception Distance (KID)">
+    **KID** is an alternative to FAD that uses kernel methods.
+    
+    - More robust to outliers than FAD
+    - Unbiased estimator of distance between distributions
+    - Computationally efficient
+    
+    **Use cases**:
+    - Alternative to FAD for smaller datasets
+    - When robustness to outliers is important
+    - Evaluating music generation quality
+  </Accordion>
+</AccordionGroup>
+
+## Metric Interpretation
+
+### FAD Scores
+
+- **< 1.0**: Excellent - Generated audio very similar to real
+- **1.0 - 5.0**: Good - Noticeable but acceptable differences
+- **5.0 - 15.0**: Fair - Significant differences, room for improvement
+- **> 15.0**: Poor - Large distribution gap
+
+### Density vs. Coverage Trade-off
+
+<Info>
+  **Ideal generative models** achieve both high density (quality) and high coverage (diversity). Monitoring both metrics together helps identify:
+  
+  - **High density, low coverage**: Mode collapse - good quality but limited diversity
+  - **Low density, high coverage**: Poor quality but good diversity
+  - **High density, high coverage**: Ideal - good quality and diversity
+  - **Low density, low coverage**: Poor performance overall
+</Info>
+
+## Usage Recommendations
+
+<AccordionGroup>
+  <Accordion title="Evaluating Generative Models">
+    For comprehensive evaluation of audio generation models:
+    
+    1. **Primary metric**: Use FAD as the main benchmark
+    2. **Diversity check**: Monitor density and coverage scores
+    3. **Robustness**: Also compute KID for comparison
+    
+    This combination provides both overall quality assessment and insights into mode coverage.
+  </Accordion>
+  
+  <Accordion title="Dataset Requirements">
+    Distributional metrics require sufficient data:
+    
+    - **Minimum**: 100+ samples per distribution
+    - **Recommended**: 1000+ samples for stable estimates
+    - **Optimal**: 10,000+ samples for fine-grained comparison
+    
+    Smaller datasets may produce unreliable metric values.
+  </Accordion>
+  
+  <Accordion title="Feature Extractors">
+    Choice of feature extractor significantly impacts results:
+    
+    - **VGGish**: General audio classification features
+    - **PANNs**: Pre-trained audio neural networks
+    - **CLAP**: Joint audio-language embeddings
+    - **Domain-specific**: Custom embeddings for specialized tasks
+    
+    Use the same feature extractor consistently across comparisons.
+  </Accordion>
+</AccordionGroup>
+
+## Installation Guide
+
+Since most distributional metrics are not auto-installed:
+
+```bash
+# Frechet Audio Distance
+pip install fadtk
+
+# Sony Audio Metrics (Density, Coverage, KID)
+git clone https://github.com/SonyCSLParis/audio-metrics
+cd audio-metrics
+pip install -e .
+
+# Stability AI Metrics (KL Divergence)
+git clone https://github.com/Stability-AI/stable-audio-metrics
+cd stable-audio-metrics
+pip install -e .
+```
+
+<Warning>
+  Distributional metrics are marked as **in verification** in VERSA. Installation and usage may require additional configuration. Refer to each metric's repository for detailed setup instructions.
+</Warning>
+
+## Best Practices
+
+1. **Use multiple metrics**: Don't rely on a single distributional metric
+2. **Track over time**: Monitor metrics throughout training to detect issues early
+3. **Compare to baselines**: Establish baseline scores with known good models
+4. **Match preprocessing**: Ensure reference and generated audio use identical preprocessing
+5. **Large sample sizes**: Use as many samples as feasible for stable estimates
+
+## Related Resources
+
+- [FAD Toolkit Documentation](https://github.com/microsoft/fadtk)
+- [Sony Audio Metrics Paper](https://arxiv.org/abs/2002.09797)
+- [Original FID Paper](https://arxiv.org/abs/1706.08500) (image domain inspiration)

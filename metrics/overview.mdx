@@ -1,0 +1,114 @@
+---
+title: "Metrics Overview"
+description: "Comprehensive guide to speech quality metrics in VERSA"
+---
+
+VERSA provides a comprehensive suite of speech quality assessment metrics across four main categories. This reference guide helps you understand and choose the right metrics for your evaluation needs.
+
+## Metric Categories
+
+VERSA organizes metrics into four distinct categories based on their reference requirements:
+
+<CardGroup cols={2}>
+
+<Card title="Independent Metrics" icon="wave-square" href="/metrics/independent">
+  No-reference metrics that evaluate audio quality without requiring a reference signal. Perfect for real-time assessment and scenarios where reference audio is unavailable.
+</Card>
+
+<Card title="Dependent Metrics" icon="arrows-left-right" href="/metrics/dependent">
+  Full-reference metrics that compare generated audio against a reference signal. Ideal for measuring distortion, similarity, and reconstruction quality.
+</Card>
+
+<Card title="Non-Match Metrics" icon="waveform-lines" href="/metrics/non-match">
+  Metrics that use non-matching references such as text transcripts or different audio samples. Useful for ASR evaluation and semantic similarity.
+</Card>
+
+<Card title="Distributional Metrics" icon="chart-line" href="/metrics/distributional">
+  Metrics that evaluate statistical properties across audio distributions. Essential for evaluating generative models and dataset quality.
+</Card>
+
+</CardGroup>
+
+## Auto-Installation
+
+Many metrics in VERSA are auto-installed for immediate use. Metrics marked with "x" in the Auto-Install column are available out-of-the-box without additional setup.
+
+<Info>
+  Metrics without auto-installation require manual setup. Refer to each metric's documentation and code source for installation instructions.
+</Info>
+
+## Understanding Metric Keys
+
+Each metric has two important identifiers:
+
+- **Key in config**: Used when configuring metrics in your VERSA configuration file
+- **Key in report**: The field name that appears in evaluation reports and results
+
+## Choosing the Right Metrics
+
+Select metrics based on your evaluation scenario:
+
+<AccordionGroup>
+  <Accordion title="Speech Enhancement & Denoising">
+    - **Independent**: DNSMOS, NISQA, PLCMOS, VQScore
+    - **Dependent**: PESQ, STOI, SI-SNR, SDR, SAR
+  </Accordion>
+  
+  <Accordion title="Voice Conversion & TTS">
+    - **Independent**: UTMOS, Sheet SSQA, PAM
+    - **Dependent**: MCD, F0 Correlation, Speaker Similarity
+    - **Non-Match**: Speaker Embedding Similarity
+  </Accordion>
+  
+  <Accordion title="Singing Voice Synthesis">
+    - **Independent**: SingMOS, SingMOS Pro
+    - **Dependent**: Chroma Alignment
+    - **Non-Match**: Singer Similarity
+  </Accordion>
+  
+  <Accordion title="Speech Recognition Quality">
+    - **Non-Match**: ESPnet WER, OWSM WER, Whisper WER, ASR-Mismatch
+  </Accordion>
+  
+  <Accordion title="Audio Generation & GAN Evaluation">
+    - **Distributional**: FAD, KL Divergence, Audio Density, Audio Coverage
+  </Accordion>
+  
+  <Accordion title="Speaker & Prosody Analysis">
+    - **Independent**: Qwen2 Speaker/Voice Properties, VAD, Speaking Rate
+    - **Dependent**: F0 RMSE
+  </Accordion>
+</AccordionGroup>
+
+## References and Sources
+
+Each metric includes:
+- Links to research papers describing the methodology
+- Code source repositories for implementation details
+- Installation instructions where applicable
+
+<Note>
+  VERSA acknowledges all open-source implementations listed in the [official metrics documentation](https://github.com/shinjiwlab/versa/tree/main#list-of-metrics).
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Independent Metrics" icon="wave-square" href="/metrics/independent">
+  Explore 55 no-reference metrics
+</Card>
+
+<Card title="Dependent Metrics" icon="arrows-left-right" href="/metrics/dependent">
+  Explore 30 full-reference metrics
+</Card>
+
+<Card title="Non-Match Metrics" icon="waveform-lines" href="/metrics/non-match">
+  Explore 16 non-matching reference metrics
+</Card>
+
+<Card title="Distributional Metrics" icon="chart-line" href="/metrics/distributional">
+  Explore 5 distributional metrics
+</Card>
+
+</CardGroup>

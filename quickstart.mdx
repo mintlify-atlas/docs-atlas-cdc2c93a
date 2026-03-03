@@ -1,80 +1,428 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Run your first VERSA evaluation in minutes with real examples
 ---
 
-## Get started in three steps
+This guide walks you through running your first audio evaluation with VERSA. You'll learn the core workflow and see real results in minutes.
 
-Get your documentation site running locally and make your first customization.
+## Your First Evaluation
 
-### Step 1: Set up your local environment
+Let's evaluate audio quality using the built-in test samples.
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+<Steps>
+  <Step title="Prepare Your Audio Files">
+    VERSA supports three input formats:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    <Tabs>
+      <Tab title="Directory (Simple)">
+        Place audio files in directories:
+        
+        ```bash
+        reference_audio/
+        ├── sample1.wav
+        ├── sample2.wav
+        └── sample3.wav
+        
+        generated_audio/
+        ├── sample1.wav
+        ├── sample2.wav
+        └── sample3.wav
+        ```
+        
+        Use `--io dir` when running the scorer.
+      </Tab>
+      
+      <Tab title="SCP Files (Kaldi-style)">
+        Create `.scp` files mapping IDs to file paths:
+        
+        ```text reference.scp
+        sample1 /path/to/reference/sample1.wav
+        sample2 /path/to/reference/sample2.wav
+        sample3 /path/to/reference/sample3.wav
+        ```
+        
+        ```text generated.scp
+        sample1 /path/to/generated/sample1.wav
+        sample2 /path/to/generated/sample2.wav
+        sample3 /path/to/generated/sample3.wav
+        ```
+        
+        Use `--io soundfile` when running the scorer.
+      </Tab>
+      
+      <Tab title="Kaldi ARK (ESPnet)">
+        Use Kaldi-style archive files (compatible with ESPnet):
+        
+        ```bash
+        # Your .scp files point to .ark archives
+        sample1 /path/to/feats.ark:12345
+        sample2 /path/to/feats.ark:67890
+        ```
+        
+        Use `--io kaldi` when running the scorer.
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Choose Your Metrics">
+    Create or use an existing configuration file. Start with the speech example:
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    ```yaml egs/speech.yaml
+    # Mel Cepstral Distortion and F0 metrics
+    - name: mcd_f0
+      f0min: 40
+      f0max: 800
+      mcep_shift: 5
+      mcep_fftl: 1024
+      mcep_dim: 39
+      mcep_alpha: 0.466
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    # Signal quality metrics (SDR, SAR, SIR, CI-SDR, SI-SNR)
+    - name: signal_metric
+    
+    # PESQ (Perceptual Evaluation of Speech Quality)
+    - name: pesq
+    
+    # STOI (Short-Time Objective Intelligibility)
+    - name: stoi
+    
+    # Speech BERT Score and BLEU
+    - name: discrete_speech
+    
+    # MOS predictors (UTMOS, DNSMOS, PLCMOS)
+    - name: pseudo_mos
+      predictor_types: ["utmos", "dnsmos", "plcmos"]
+    
+    # Speaker similarity
+    - name: speaker
+      model_tag: default
+    ```
+    
+    <Info>
+      Explore other configurations in the `egs/` directory for different use cases: `singing.yaml`, `general.yaml`, or individual metrics in `egs/separate_metrics/`.
+    </Info>
+  </Step>
+  
+  <Step title="Run the Evaluation">
+    Execute the scorer with your configuration:
+    
+    ```bash
+    python versa/bin/scorer.py \
+        --score_config egs/speech.yaml \
+        --gt test/test_samples/test1 \
+        --pred test/test_samples/test2 \
+        --output_file my_results \
+        --io dir
+    ```
+    
+    You'll see progress output:
+    
+    ```
+    INFO: The number of utterances = 1
+    INFO: Processing metrics...
+    INFO: Summary: {
+      'mcd': 5.045226506332897,
+      'f0rmse': 20.281004489942777,
+      'f0corr': -0.07540903652440145,
+      'pesq': 1.5722705125808716,
+      'stoi': 0.007625108859647406,
+      'utmos': 1.9074374437332153,
+      'spk_similarity': 0.895357072353363
+    }
+    ```
+  </Step>
+  
+  <Step title="Review the Results">
+    Results are saved to `my_results.txt` with detailed per-utterance scores:
+    
+    ```text my_results.txt
+    utterance_id mcd=5.045 f0rmse=20.281 pesq=1.572 stoi=0.008 utmos=1.907
+    ```
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Common Evaluation Scenarios
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+### Evaluating Without Reference Audio
 
-### Step 3: Go live
+Some metrics don't require reference audio (independent metrics):
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/separate_metrics/utmos2.yaml \
+    --pred generated_audio/ \
+    --output_file results \
+    --io dir
+```
 
-## Next steps
+<CodeGroup>
+```yaml Independent Metrics Config
+# No reference needed - evaluates predicted audio only
+- name: pseudo_mos
+  predictor_types: ["utmos", "dnsmos"]
+  
+- name: nisqa
 
-Now that you have your docs running, explore these key features:
+- name: vad
+
+- name: speaking_rate
+```
+
+```bash Run Without Ground Truth
+python versa/bin/scorer.py \
+    --score_config independent_metrics.yaml \
+    --pred my_audio/ \
+    --output_file quality_scores \
+    --io dir
+```
+</CodeGroup>
+
+### Evaluating with Text Transcriptions
+
+Include text information for ASR-based metrics:
+
+<Steps>
+  <Step title="Prepare Text File">
+    Create a text file with transcriptions:
+    
+    ```text transcriptions.txt
+    sample1 THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG
+    sample2 SPEECH RECOGNITION EVALUATION METRICS
+    sample3 VERSATILE EVALUATION OF SPEECH AND AUDIO
+    ```
+  </Step>
+  
+  <Step title="Run with Text Input">
+    ```bash
+    python versa/bin/scorer.py \
+        --score_config egs/separate_metrics/wer.yaml \
+        --pred generated_audio.scp \
+        --gt reference_audio.scp \
+        --text transcriptions.txt \
+        --output_file wer_results \
+        --io soundfile
+    ```
+  </Step>
+</Steps>
+
+### Using the Command-Line Interface
+
+VERSA installs a console command for convenience:
+
+```bash
+versa-score \
+    --score_config egs/speech.yaml \
+    --pred audio.scp \
+    --gt reference.scp \
+    --output_file results
+```
+
+## Python API Usage
+
+For programmatic evaluation, use the Python API directly:
+
+```python
+import yaml
+from versa.scorer_shared import (
+    audio_loader_setup,
+    list_scoring,
+    load_score_modules,
+    load_summary
+)
+
+# Load your audio files
+gen_files = audio_loader_setup("generated_audio/", io="dir")
+gt_files = audio_loader_setup("reference_audio/", io="dir")
+
+# Load configuration
+with open("egs/speech.yaml", "r") as f:
+    score_config = yaml.full_load(f)
+
+# Initialize scoring modules
+score_modules = load_score_modules(
+    score_config,
+    use_gt=True,
+    use_gpu=False
+)
+
+# Run evaluation
+score_info = list_scoring(
+    gen_files,
+    score_modules,
+    gt_files,
+    output_file="results",
+    io="dir"
+)
+
+# Get summary statistics
+summary = load_summary(score_info)
+print(f"Average PESQ: {summary['pesq']:.3f}")
+print(f"Average STOI: {summary['stoi']:.3f}")
+print(f"Average UTMOS: {summary['utmos']:.3f}")
+```
+
+### Using Individual Metrics
+
+Import and use metrics directly:
+
+```python
+import soundfile as sf
+from versa import pesq_metric, stoi_metric, pseudo_mos_setup, pseudo_mos_metric
+
+# Load audio
+ref_audio, sr = sf.read("reference.wav")
+gen_audio, sr = sf.read("generated.wav")
+
+# Calculate PESQ (requires reference)
+pesq_score = pesq_metric(gen_audio, ref_audio, sr)
+print(f"PESQ: {pesq_score:.3f}")
+
+# Calculate STOI (requires reference)
+stoi_score = stoi_metric(gen_audio, ref_audio, sr)
+print(f"STOI: {stoi_score:.3f}")
+
+# Calculate UTMOS (no reference needed)
+predictor = pseudo_mos_setup({"predictor_types": ["utmos"]})
+utmos_score = pseudo_mos_metric(gen_audio, sr, predictor, "utmos")
+print(f"UTMOS: {utmos_score:.3f}")
+```
+
+## Batch Evaluation Examples
+
+### Evaluate Multiple Configurations
+
+```bash
+# Test different metric combinations
+for config in egs/separate_metrics/*.yaml; do
+    echo "Evaluating with $(basename $config)"
+    python versa/bin/scorer.py \
+        --score_config "$config" \
+        --pred audio.scp \
+        --gt reference.scp \
+        --output_file "results_$(basename $config .yaml)"
+done
+```
+
+### GPU-Accelerated Evaluation
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech_gpu.yaml \
+    --pred audio.scp \
+    --gt reference.scp \
+    --output_file gpu_results \
+    --use_gpu true \
+    --rank 0
+```
+
+<Warning>
+  **GPU Memory**: Some metrics (especially LLM-based ones like Qwen2-Audio) require significant GPU memory. Monitor your GPU usage with `nvidia-smi`.
+</Warning>
+
+## Understanding Configuration Files
+
+Each metric in the YAML configuration can have custom parameters:
+
+```yaml
+# Basic metric (no parameters)
+- name: pesq
+
+# Metric with parameters
+- name: mcd_f0
+  f0min: 40          # Minimum F0 in Hz
+  f0max: 800         # Maximum F0 in Hz
+  mcep_dim: 39       # Number of MCEP dimensions
+  dtw: false         # Disable dynamic time warping
+
+# Metric with multiple variants
+- name: pseudo_mos
+  predictor_types: 
+    - utmos
+    - dnsmos
+    - plcmos
+    - dnsmos_pro_bvcc
+  predictor_args:
+    utmos:
+      fs: 16000      # Sample rate
+    dnsmos:
+      fs: 16000
+```
+
+<Tip>
+  **Explore configurations**: Check the `egs/` directory for pre-configured setups:
+  - `speech.yaml` - Comprehensive speech evaluation
+  - `singing.yaml` - Singing voice synthesis
+  - `speech_cpu.yaml` - CPU-only metrics
+  - `speech_gpu.yaml` - GPU-accelerated metrics
+  - `separate_metrics/` - Individual metric examples
+</Tip>
+
+## Distributed Evaluation (Advanced)
+
+For large datasets, use Slurm-based distributed evaluation:
+
+<Steps>
+  <Step title="Prepare SCP Files">
+    Ensure your audio is indexed in SCP format:
+    
+    ```bash
+    # List all files with IDs
+    find /path/to/audio -name "*.wav" | \
+        awk -F/ '{print $NF, $0}' | \
+        sed 's/.wav//' > audio.scp
+    ```
+  </Step>
+  
+  <Step title="Launch Distributed Jobs">
+    ```bash
+    ./launch_slurm.sh \
+      generated_audio.scp \
+      reference_audio.scp \
+      results_dir/ \
+      32  # Number of parallel jobs
+    ```
+  </Step>
+  
+  <Step title="Aggregate Results">
+    ```bash
+    # Combine CPU metric results
+    cat results_dir/result/*.result.cpu.txt > final_results_cpu.txt
+    
+    # Combine GPU metric results
+    cat results_dir/result/*.result.gpu.txt > final_results_gpu.txt
+    ```
+  </Step>
+  
+  <Step title="Visualize Results">
+    ```bash
+    python scripts/show_result.py final_results_cpu.txt
+    python scripts/show_result.py final_results_gpu.txt
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+Now that you've run your first evaluation, explore:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Metrics Reference" icon="book" href="/metrics/overview">
+    Learn about all 90+ available metrics and their use cases
+  </Card>
+  
+  <Card title="Configuration Guide" icon="sliders" href="/concepts/configuration">
+    Deep dive into metric configuration and customization
+  </Card>
+  
+  <Card title="Visualization" icon="chart-bar" href="/guides/visualization">
+    Create interactive visualizations of your results
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/scorer">
+    Explore the complete Python API documentation
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  **Try the interactive demo**: Experiment with VERSA in Google Colab without any local installation: [VERSA Colab Demo](https://colab.research.google.com/drive/11c0vZxbSa8invMSfqM999tI3MnyAVsOp?usp=sharing)
 </Note>

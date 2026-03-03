@@ -1,0 +1,348 @@
+---
+title: CLI Usage
+description: Complete guide to using VERSA's command-line interface
+---
+
+VERSA provides a powerful command-line interface through `scorer.py` for evaluating speech and audio quality. This guide covers all CLI options and usage patterns.
+
+## Basic Usage
+
+The basic syntax for running VERSA from the command line:
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech.yaml \
+    --pred test/test_samples/test2.scp \
+    --gt test/test_samples/test1.scp \
+    --output_file results/test_result
+```
+
+## CLI Arguments Reference
+
+### Required Arguments
+
+<ParamField path="--pred" type="string" required>
+  Path to the generated/predicted waveforms. Supports:
+  - SCP files (Kaldi-style): `pred.scp`
+  - Direct audio files: `audio.wav`
+  - Directory paths when using `--io dir`
+</ParamField>
+
+<ParamField path="--score_config" type="string" required>
+  Path to the YAML configuration file specifying which metrics to compute.
+  
+  Examples:
+  - `egs/speech.yaml` - Speech evaluation metrics
+  - `egs/singing.yaml` - Singing voice metrics
+  - `egs/general.yaml` - General audio metrics
+</ParamField>
+
+### Optional Arguments
+
+<ParamField path="--gt" type="string">
+  Path to ground truth/reference waveforms. Use `None` for reference-free evaluation.
+  
+  Default: `None`
+</ParamField>
+
+<ParamField path="--text" type="string">
+  Path to ground truth transcriptions for ASR-based metrics (WER/CER).
+  
+  Format:
+  ```text
+  utt_001 This is the first transcription
+  utt_002 This is the second transcription
+  ```
+</ParamField>
+
+<ParamField path="--output_file" type="string">
+  Path for writing evaluation results. Results are saved in JSONL format.
+  
+  Default: `None` (prints to stdout only)
+</ParamField>
+
+<ParamField path="--cache_folder" type="string">
+  Directory for caching intermediate results and model outputs.
+  
+  Default: `None`
+</ParamField>
+
+<ParamField path="--use_gpu" type="boolean">
+  Whether to use GPU acceleration for neural network-based metrics.
+  
+  Default: `False`
+</ParamField>
+
+<ParamField path="--io" type="string">
+  I/O interface for loading audio files.
+  
+  Choices:
+  - `kaldi` - Kaldi-style SCP/ARK files (compatible with ESPnet)
+  - `soundfile` - Direct audio file reading with soundfile
+  - `dir` - Directory-based audio loading
+  
+  Default: `kaldi`
+</ParamField>
+
+<ParamField path="--verbose" type="integer">
+  Verbosity level for logging output.
+  
+  Levels:
+  - `0` - Warnings only
+  - `1` - Info messages (default)
+  - `2+` - Debug messages
+  
+  Default: `1`
+</ParamField>
+
+<ParamField path="--rank" type="integer">
+  Overall rank in batch processing, used to specify GPU device ID.
+  
+  Useful for distributed processing to assign specific GPUs.
+  
+  Default: `0`
+</ParamField>
+
+<ParamField path="--no_match" type="boolean" default="false">
+  Flag to disable matching between ground truth and generated files.
+  
+  Use when files are pre-aligned or for independent evaluation.
+</ParamField>
+
+## Usage Examples
+
+### Basic Evaluation with Reference
+
+Evaluate predicted speech against ground truth:
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech.yaml \
+    --pred data/predicted.scp \
+    --gt data/reference.scp \
+    --output_file results/evaluation \
+    --io soundfile
+```
+
+### Reference-Free Evaluation
+
+Evaluate without ground truth (using only independent metrics):
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech.yaml \
+    --pred data/predicted.scp \
+    --gt None \
+    --output_file results/noref_evaluation \
+    --io soundfile
+```
+
+### Evaluation with Transcriptions
+
+Include ASR-based metrics (WER/CER) using text transcriptions:
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/separate_metrics/wer.yaml \
+    --pred data/predicted.scp \
+    --gt data/reference.scp \
+    --text data/transcripts.txt \
+    --output_file results/with_wer \
+    --io soundfile
+```
+
+### GPU-Accelerated Evaluation
+
+Use GPU for faster processing of neural metrics:
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech_gpu.yaml \
+    --pred data/predicted.scp \
+    --gt data/reference.scp \
+    --output_file results/gpu_evaluation \
+    --use_gpu true \
+    --io soundfile
+```
+
+### Directory-Based Evaluation
+
+Evaluate all audio files in a directory:
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech.yaml \
+    --pred test/test_samples/test2 \
+    --gt test/test_samples/test1 \
+    --output_file results/dir_evaluation \
+    --io dir
+```
+
+### Kaldi/ESPnet Compatible Evaluation
+
+Use Kaldi-style ARK files (compatible with ESPnet workflows):
+
+```bash
+python versa/bin/scorer.py \
+    --score_config egs/speech.yaml \
+    --pred exp/model/wav.scp \
+    --gt data/test/wav.scp \
+    --output_file results/kaldi_evaluation \
+    --io kaldi
+```
+
+## Input File Formats
+
+### SCP Format (Kaldi-style)
+
+SCP files list utterance IDs and paths:
+
+```text
+utt_001 /path/to/audio1.wav
+utt_002 /path/to/audio2.wav
+utt_003 /path/to/audio3.wav
+```
+
+### Text Transcription Format
+
+Text files map utterance IDs to transcriptions:
+
+```text
+utt_001 The quick brown fox jumps over the lazy dog
+utt_002 VERSA is a versatile evaluation toolkit
+utt_003 Speech and audio quality assessment
+```
+
+## Output Format
+
+Results are saved in JSONL format (one JSON object per line):
+
+```json
+{"key": "utt_001", "pesq": 3.456, "stoi": 0.923, "utmos": 4.12, "mcd": 5.34}
+{"key": "utt_002", "pesq": 3.789, "stoi": 0.945, "utmos": 4.35, "mcd": 4.87}
+```
+
+<Tip>
+Use `python scripts/show_result.py results.txt` to analyze and visualize the JSONL output.
+</Tip>
+
+## Verbosity Levels
+
+<Steps>
+  <Step title="Quiet Mode (--verbose 0)">
+    Shows only warnings and errors:
+    ```bash
+    python versa/bin/scorer.py --score_config egs/speech.yaml \
+        --pred data/pred.scp --gt data/gt.scp \
+        --output_file results.txt --verbose 0
+    ```
+  </Step>
+  
+  <Step title="Normal Mode (--verbose 1)">
+    Shows info messages and progress (default):
+    ```bash
+    python versa/bin/scorer.py --score_config egs/speech.yaml \
+        --pred data/pred.scp --gt data/gt.scp \
+        --output_file results.txt --verbose 1
+    ```
+  </Step>
+  
+  <Step title="Debug Mode (--verbose 2)">
+    Shows detailed debugging information:
+    ```bash
+    python versa/bin/scorer.py --score_config egs/speech.yaml \
+        --pred data/pred.scp --gt data/gt.scp \
+        --output_file results.txt --verbose 2
+    ```
+  </Step>
+</Steps>
+
+## Common Workflows
+
+<Tabs>
+  <Tab title="Speech Synthesis">
+    Evaluate TTS/speech synthesis outputs:
+    ```bash
+    python versa/bin/scorer.py \
+        --score_config egs/speech.yaml \
+        --pred exp/tts_model/generated.scp \
+        --gt data/test/reference.scp \
+        --text data/test/text \
+        --output_file results/tts_evaluation \
+        --use_gpu true \
+        --io soundfile
+    ```
+  </Tab>
+  
+  <Tab title="Voice Conversion">
+    Evaluate voice conversion quality:
+    ```bash
+    python versa/bin/scorer.py \
+        --score_config egs/speech.yaml \
+        --pred exp/vc_model/converted.scp \
+        --gt data/target_speaker.scp \
+        --output_file results/vc_evaluation \
+        --use_gpu true \
+        --io soundfile
+    ```
+  </Tab>
+  
+  <Tab title="Speech Enhancement">
+    Evaluate denoising/enhancement:
+    ```bash
+    python versa/bin/scorer.py \
+        --score_config egs/speech.yaml \
+        --pred exp/enh_model/enhanced.scp \
+        --gt data/clean_speech.scp \
+        --output_file results/enhancement_eval \
+        --use_gpu true \
+        --io soundfile
+    ```
+  </Tab>
+  
+  <Tab title="Singing Voice">
+    Evaluate singing voice synthesis:
+    ```bash
+    python versa/bin/scorer.py \
+        --score_config egs/singing.yaml \
+        --pred exp/svs_model/synthesized.scp \
+        --gt data/singing/reference.scp \
+        --output_file results/singing_evaluation \
+        --use_gpu true \
+        --io soundfile
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Appropriate Config" icon="file-lines">
+    Select the configuration file that matches your use case:
+    - `speech.yaml` for general speech
+    - `speech_gpu.yaml` for GPU-accelerated speech metrics
+    - `singing.yaml` for singing voice
+  </Card>
+  
+  <Card title="Enable GPU" icon="microchip">
+    Use `--use_gpu true` when evaluating neural metrics like UTMOS, DNS-MOS, or speaker similarity for significantly faster processing.
+  </Card>
+  
+  <Card title="Set Verbosity" icon="volume">
+    Use `--verbose 1` for progress tracking during long evaluations, or `--verbose 0` when running in batch scripts.
+  </Card>
+  
+  <Card title="Cache Results" icon="database">
+    Use `--cache_folder` to store intermediate results when re-running evaluations with different metric configurations.
+  </Card>
+</CardGroup>
+
+<Warning>
+When using `--use_gpu true` with distributed processing, always set the `--rank` parameter to assign specific GPU devices and avoid conflicts.
+</Warning>
+
+## Next Steps
+
+- Learn about [Python API usage](/guides/python-api) for programmatic access
+- Explore [distributed evaluation](/guides/distributed-evaluation) for large-scale processing
+- Check [visualization tools](/guides/visualization) for analyzing results

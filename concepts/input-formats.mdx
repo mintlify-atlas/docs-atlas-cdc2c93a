@@ -1,0 +1,594 @@
+---
+title: Input Formats
+description: Understanding the three input formats supported by VERSA
+icon: file-audio
+---
+
+VERSA supports three different input formats for specifying audio files. Choose the format that best fits your workflow and data organization.
+
+## Overview
+
+The input format is controlled by the `--io` flag:
+
+<CardGroup cols={3}>
+  <Card title="kaldi" icon="k" color="#3b82f6">
+    Kaldi-style SCP files (default)
+  </Card>
+  <Card title="soundfile" icon="file-lines" color="#8b5cf6">
+    Simple file path lists
+  </Card>
+  <Card title="dir" icon="folder-open" color="#ec4899">
+    Directory scanning
+  </Card>
+</CardGroup>
+
+```bash
+versa-scorer \
+  --pred outputs.scp \
+  --io kaldi  # or soundfile, or dir
+```
+
+## Kaldi Format (Default)
+
+The Kaldi format uses `.scp` (script) files that map utterance IDs to audio file paths or processing pipelines.
+
+### Basic File Paths
+
+Simple ID-to-path mapping:
+
+```text
+utterance_001 /path/to/audio/file1.wav
+utterance_002 /path/to/audio/file2.wav
+utterance_003 /path/to/audio/file3.flac
+```
+
+<Info>
+  This is the **default** format. If you don't specify `--io`, VERSA assumes `kaldi`.
+</Info>
+
+### Pipeline Format
+
+Kaldi supports processing pipelines with pipes (`|`):
+
+```text
+utterance_001 sox /path/to/file1.wav -t wav - |
+utterance_002 ffmpeg -i /path/to/file2.mp3 -f wav - |
+utterance_003 cat /path/to/file3.raw | sox -t raw -r 16000 -b 16 -e signed - -t wav - |
+```
+
+<Note>
+  Pipeline support requires the `kaldi` IO interface. The `soundfile` interface does not support pipes.
+</Note>
+
+### Archive Format
+
+Point to Kaldi archives:
+
+```text
+utterance_001 ark:/path/to/archive.ark:12345
+utterance_002 ark:/path/to/archive.ark:67890
+```
+
+### When to Use Kaldi Format
+
+<AccordionGroup>
+  <Accordion title="Integration with Kaldi Workflows">
+    If you're already using Kaldi for speech processing, use this format to maintain compatibility:
+    
+    ```bash
+    # Use existing Kaldi wav.scp files
+    versa-scorer \
+      --pred exp/generated/wav.scp \
+      --gt data/test/wav.scp \
+      --score_config configs/speech.yaml \
+      --output_file results.json
+    ```
+  </Accordion>
+  
+  <Accordion title="On-the-fly Processing">
+    Apply audio processing during evaluation:
+    
+    ```text
+    # Convert sample rate on the fly
+    utt1 sox input.wav -r 16000 -t wav - |
+    
+    # Extract channel
+    utt2 sox stereo.wav -c 1 -t wav - |
+    
+    # Apply volume normalization
+    utt3 sox input.wav -t wav - norm |
+    ```
+  </Accordion>
+  
+  <Accordion title="Archive Storage">
+    Access files stored in Kaldi archives efficiently:
+    
+    ```text
+    utt_001 ark:data/train.ark:0
+    utt_002 ark:data/train.ark:44100
+    utt_003 ark:data/train.ark:88200
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Creating Kaldi SCP Files
+
+<Tabs>
+  <Tab title="From Directory">
+    Generate SCP from a directory of audio files:
+    
+    ```bash
+    # Simple script to create wav.scp
+    for file in /path/to/audio/*.wav; do
+      id=$(basename "$file" .wav)
+      echo "${id} ${file}"
+    done > wav.scp
+    ```
+    
+    Result:
+    ```text
+    sample1 /path/to/audio/sample1.wav
+    sample2 /path/to/audio/sample2.wav
+    sample3 /path/to/audio/sample3.wav
+    ```
+  </Tab>
+  
+  <Tab title="With Processing">
+    Include sox processing:
+    
+    ```bash
+    for file in /path/to/audio/*.mp3; do
+      id=$(basename "$file" .mp3)
+      echo "${id} sox ${file} -r 16000 -c 1 -t wav - |"
+    done > wav.scp
+    ```
+    
+    Result:
+    ```text
+    sample1 sox /path/to/audio/sample1.mp3 -r 16000 -c 1 -t wav - |
+    sample2 sox /path/to/audio/sample2.mp3 -r 16000 -c 1 -t wav - |
+    ```
+  </Tab>
+  
+  <Tab title="From File List">
+    Convert a file list to SCP format:
+    
+    ```bash
+    # input: files.txt with one path per line
+    # output: wav.scp
+    
+    cat files.txt | while read file; do
+      id=$(basename "$file" | sed 's/\.[^.]*$//')
+      echo "${id} ${file}"
+    done > wav.scp
+    ```
+  </Tab>
+</Tabs>
+
+## Soundfile Format
+
+A simplified format using plain text file lists without pipeline support.
+
+### Format Specification
+
+```text
+utterance_001 /path/to/audio/file1.wav
+utterance_002 /path/to/audio/file2.wav
+utterance_003 /path/to/audio/file3.flac
+```
+
+<Warning>
+  The soundfile format **does not support** pipes (`|`). If your file path ends with `|`, you'll get an error:
+  
+  ```
+  ValueError: Not supported wav.scp format. Set IO interface to kaldi
+  ```
+</Warning>
+
+### Usage
+
+```bash
+versa-scorer \
+  --pred outputs.txt \
+  --gt references.txt \
+  --io soundfile \
+  --score_config configs/speech.yaml \
+  --output_file results.json
+```
+
+### When to Use Soundfile Format
+
+<CardGroup cols={2}>
+  <Card title="Simple File Lists" icon="list">
+    When you have straightforward file paths without processing
+  </Card>
+  <Card title="No Kaldi Dependency" icon="xmark">
+    When you want to avoid Kaldi-specific features
+  </Card>
+  <Card title="Quick Evaluation" icon="bolt">
+    For rapid testing without pipeline overhead
+  </Card>
+  <Card title="Compatibility" icon="link">
+    When integrating with non-Kaldi tools
+  </Card>
+</CardGroup>
+
+### Creating Soundfile Lists
+
+```bash
+# Simple file list
+ls /path/to/audio/*.wav | awk '{print NR, $0}' > files.txt
+
+# With custom IDs
+for file in /path/to/audio/*.wav; do
+  id=$(basename "$file" .wav)
+  echo "${id} ${file}"
+done > files.txt
+```
+
+<Info>
+  The format is identical to basic Kaldi SCP, but processed differently internally. Use `soundfile` if you don't need pipeline features.
+</Info>
+
+## Directory Format
+
+Automatically discover and process all audio files in a directory.
+
+### Usage
+
+```bash
+versa-scorer \
+  --pred /path/to/generated_audio/ \
+  --gt /path/to/reference_audio/ \
+  --io dir \
+  --score_config configs/speech.yaml \
+  --output_file results.json
+```
+
+<Note>
+  When using `--io dir`, the `--pred` and `--gt` arguments should be **directory paths**, not file paths.
+</Note>
+
+### How It Works
+
+VERSA will:
+
+1. Scan the directory recursively
+2. Find all audio files (wav, flac, mp3, etc.)
+3. Generate utterance IDs from filenames
+4. Create an in-memory file mapping
+
+### File Discovery
+
+VERSA searches for common audio extensions:
+
+<Tabs>
+  <Tab title="Supported Formats">
+    - `.wav` - Waveform Audio
+    - `.flac` - Free Lossless Audio Codec
+    - `.mp3` - MPEG Audio Layer 3
+    - `.ogg` - Ogg Vorbis
+    - `.opus` - Opus Interactive Audio Codec
+    - `.m4a` - MPEG-4 Audio
+    - And more via soundfile/librosa
+  </Tab>
+  
+  <Tab title="Directory Structure">
+    ```
+    /path/to/audio/
+    ├── speaker1/
+    │   ├── utt001.wav
+    │   └── utt002.wav
+    ├── speaker2/
+    │   ├── utt001.wav
+    │   └── utt002.wav
+    └── test_samples/
+        └── sample.flac
+    ```
+    
+    All files are discovered regardless of subdirectory depth.
+  </Tab>
+</Tabs>
+
+### Utterance ID Generation
+
+IDs are derived from file paths:
+
+```python
+# File: /path/to/audio/speaker1/utt001.wav
+# ID: speaker1_utt001
+
+# File: /path/to/audio/test.flac  
+# ID: test
+```
+
+<Warning>
+  Ensure filenames are unique across all subdirectories, or IDs may collide.
+</Warning>
+
+### When to Use Directory Format
+
+<AccordionGroup>
+  <Accordion title="Quick Evaluation">
+    Evaluate all files in a directory without creating SCP files:
+    
+    ```bash
+    # Evaluate entire output directory
+    versa-scorer \
+      --pred experiments/run_001/outputs/ \
+      --gt data/references/ \
+      --io dir \
+      --score_config configs/quick.yaml \
+      --output_file results.json
+    ```
+  </Accordion>
+  
+  <Accordion title="Exploratory Analysis">
+    Quickly analyze a collection of audio files:
+    
+    ```bash
+    # Analyze a dataset
+    versa-scorer \
+      --pred dataset/generated/ \
+      --io dir \
+      --score_config configs/independent_metrics.yaml \
+      --output_file analysis.json
+    ```
+  </Accordion>
+  
+  <Accordion title="Prototyping">
+    During development when file lists aren't established:
+    
+    ```bash
+    # Test new model outputs
+    versa-scorer \
+      --pred model_v2/samples/ \
+      --io dir \
+      --score_config configs/tts.yaml \
+      --output_file model_v2_results.json
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Matching Reference Files
+
+### How VERSA Matches Files
+
+For dependent metrics, VERSA matches predicted and reference files by utterance ID:
+
+```text
+# pred.scp
+utterance_001 /pred/file1.wav
+utterance_002 /pred/file2.wav
+
+# gt.scp  
+utterance_001 /gt/file1.wav
+utterance_002 /gt/file2.wav
+utterance_003 /gt/file3.wav  # This won't cause an error
+```
+
+<Info>
+  VERSA only evaluates IDs present in the prediction file. Extra IDs in ground truth are ignored.
+</Info>
+
+### Disabling Matching
+
+For non-match metrics only:
+
+```bash
+versa-scorer \
+  --pred outputs.scp \
+  --gt references.scp \
+  --no_match \
+  --score_config configs/nonmatch_only.yaml \
+  --output_file results.json
+```
+
+<Warning>
+  Using `--no_match` with dependent metrics will cause those metrics to be skipped.
+</Warning>
+
+## Comparison Table
+
+| Feature | kaldi | soundfile | dir |
+|---------|-------|-----------|-----|
+| Default format | ✅ | ❌ | ❌ |
+| Requires SCP file | ✅ | ✅ | ❌ |
+| Pipeline support | ✅ | ❌ | ❌ |
+| Archive support | ✅ | ❌ | ❌ |
+| Auto-discovery | ❌ | ❌ | ✅ |
+| Processing overhead | Low | Low | Medium |
+| Setup complexity | Medium | Low | Minimal |
+| Use case | Production | Simple lists | Quick tests |
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Production Workflows">
+    Use **kaldi** format for production:
+    
+    ✅ Consistent with speech processing tools  
+    ✅ Supports preprocessing pipelines  
+    ✅ Efficient with large datasets  
+    ✅ Well-documented format
+    
+    ```bash
+    versa-scorer \
+      --pred exp/system_a/wav.scp \
+      --gt data/test_clean/wav.scp \
+      --score_config configs/production.yaml \
+      --output_file results/system_a.json
+    ```
+  </Accordion>
+  
+  <Accordion title="Development and Testing">
+    Use **dir** format for development:
+    
+    ✅ No file preparation needed  
+    ✅ Quick iteration  
+    ✅ Easy to add/remove samples  
+    
+    ```bash
+    versa-scorer \
+      --pred debug/outputs/ \
+      --io dir \
+      --score_config configs/debug.yaml \
+      --output_file debug_results.json
+    ```
+  </Accordion>
+  
+  <Accordion title="Integration with Other Tools">
+    Use **soundfile** format when:
+    
+    ✅ Integrating with non-Kaldi tools  
+    ✅ You have simple file lists  
+    ✅ No preprocessing needed  
+    
+    ```bash
+    # Convert from simple list to soundfile format
+    cat file_list.txt | awk '{print NR, $0}' > files.txt
+    
+    versa-scorer \
+      --pred files.txt \
+      --io soundfile \
+      --score_config configs/simple.yaml \
+      --output_file results.json
+    ```
+  </Accordion>
+  
+  <Accordion title="Handling Large Datasets">
+    For very large datasets, use **kaldi** with archives:
+    
+    ```bash
+    # Create archive (reduces file count)
+    copy-vector ark:- ark:audio.ark < wav.scp
+    
+    # Reference archive in SCP
+    echo "utt1 ark:audio.ark:0" > archive.scp
+    
+    versa-scorer \
+      --pred archive.scp \
+      --io kaldi \
+      --score_config configs/large.yaml \
+      --output_file results.json
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Examples
+
+### Example 1: Kaldi Format with Processing
+
+```bash
+# Create SCP with sox processing
+cat > pred.scp << EOF
+utt1 sox samples/raw1.wav -r 16000 -c 1 -t wav - |
+utt2 sox samples/raw2.wav -r 16000 -c 1 -t wav - |
+EOF
+
+# Run evaluation
+versa-scorer \
+  --pred pred.scp \
+  --io kaldi \
+  --score_config egs/demo/tts.yaml \
+  --output_file results.json
+```
+
+### Example 2: Soundfile Format
+
+```bash
+# Create simple file list
+cat > pred.txt << EOF
+utt1 /data/outputs/sample1.wav
+utt2 /data/outputs/sample2.wav
+utt3 /data/outputs/sample3.wav
+EOF
+
+cat > gt.txt << EOF
+utt1 /data/references/sample1.wav
+utt2 /data/references/sample2.wav
+utt3 /data/references/sample3.wav
+EOF
+
+# Run evaluation
+versa-scorer \
+  --pred pred.txt \
+  --gt gt.txt \
+  --io soundfile \
+  --score_config egs/speech.yaml \
+  --output_file results.json
+```
+
+### Example 3: Directory Format
+
+```bash
+# Organize files in directories
+mkdir -p outputs references
+cp generated/*.wav outputs/
+cp ground_truth/*.wav references/
+
+# Run evaluation
+versa-scorer \
+  --pred outputs/ \
+  --gt references/ \
+  --io dir \
+  --score_config egs/demo/se.yaml \
+  --output_file results.json
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Error: Not supported wav.scp format">
+    **Problem**: Used pipe (`|`) with soundfile format
+    
+    **Solution**: Switch to kaldi format:
+    ```bash
+    versa-scorer --pred files.scp --io kaldi ...
+    ```
+  </Accordion>
+  
+  <Accordion title="Error: Not found any generated audio files">
+    **Problem**: Directory is empty or contains unsupported formats
+    
+    **Solution**: 
+    - Check directory path
+    - Verify audio file extensions
+    - Try using SCP format instead
+  </Accordion>
+  
+  <Accordion title="Warning: Groundtruth files less than generated files">
+    **Problem**: Missing reference files for some predictions
+    
+    **Solution**: 
+    - Ensure all predicted IDs have matching reference IDs
+    - Check for typos in utterance IDs
+    - Use `--no_match` if references aren't needed
+  </Accordion>
+  
+  <Accordion title="Files not being discovered in directory mode">
+    **Problem**: VERSA isn't finding your audio files
+    
+    **Solution**:
+    - Verify file extensions are standard audio formats
+    - Check file permissions
+    - Try creating an explicit SCP file instead
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Metric Types" icon="chart-line" href="/concepts/metric-types">
+    Learn about the four metric categories
+  </Card>
+  <Card title="Configuration" icon="gear" href="/concepts/configuration">
+    Configure metrics in YAML
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run your first evaluation
+  </Card>
+  <Card title="CLI Usage" icon="terminal" href="/guides/cli-usage">
+    Complete CLI documentation
+  </Card>
+</CardGroup>

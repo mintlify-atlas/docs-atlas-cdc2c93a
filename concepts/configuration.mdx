@@ -1,0 +1,557 @@
+---
+title: Configuration
+description: How to configure VERSA metrics using YAML files
+icon: gear
+---
+
+VERSA uses YAML configuration files to define which metrics to compute and how to configure them. This page explains the structure and options available.
+
+## Configuration Basics
+
+### File Structure
+
+A VERSA configuration file is a YAML list where each item defines a metric:
+
+```yaml
+# Basic structure
+- name: metric_name
+  parameter1: value1
+  parameter2: value2
+
+- name: another_metric
+  parameter: value
+```
+
+<Info>
+  All configuration examples in this guide are taken from real configs in the [egs/](https://github.com/shinjiwlab/versa/tree/main/egs) directory.
+</Info>
+
+### Required Fields
+
+Every metric configuration must have:
+
+- `name`: The metric identifier (e.g., `pseudo_mos`, `mcd_f0`, `pesq`)
+
+### Optional Fields
+
+Depending on the metric, you can specify:
+
+- Model parameters
+- Processing options  
+- Model tags/versions
+- Cache directories
+- Device settings
+
+## Complete Configuration Examples
+
+<Tabs>
+  <Tab title="TTS">
+    Full configuration for Text-to-Speech evaluation from `egs/demo/tts.yaml`:
+    
+    ```yaml
+    # TTS Metrics Configuration for VERSA
+    
+    # mcd f0 related metrics
+    #  -- mcd: mel cepstral distortion
+    #  -- f0_corr: f0 correlation
+    #  -- f0_rmse: f0 root mean square error
+    - name: mcd_f0
+      f0min: 40
+      f0max: 800
+      mcep_shift: 5
+      mcep_fftl: 1024
+      mcep_dim: 39
+      mcep_alpha: 0.466
+      seq_mismatch_tolerance: 0.1
+      power_threshold: -20
+      dtw: true
+    
+    # discrete speech metrics
+    # -- speech_bert: speech bert score
+    # -- speech_bleu: speech bleu score
+    # -- speech_token_distance: speech token distance score
+    - name: discrete_speech
+    
+    # nomad (reference-based) metric
+    # -- nomad: nomad reference-based model
+    - name: nomad
+      model_cache: versa_cache/nomad_pt-models
+    
+    # An overall model on MOS-bench from Sheet toolkit
+    # --sheet_ssqa: the mos prediction from sheet_ssqa
+    - name: sheet_ssqa
+    
+    # pseudo subjective metrics
+    # -- utmos: UT-MOS score
+    - name: pseudo_mos
+      predictor_types: ["utmos"]
+      predictor_args:
+        utmos:
+          fs: 16000
+    
+    # Word error rate with OpenAI-Whisper model
+    # -- whisper_wer: word error rate of openai-whisper
+    - name: whisper_wer
+      model_tag: default
+      beam_size: 1
+      text_cleaner: whisper_basic
+    
+    # Audiobox Aesthetics
+    - name: audiobox_aesthetics
+      batch_size: 1
+      cache_dir: versa_cache/audiobox
+    
+    # ASR-match calculating
+    # --asr_match_error_rate: correct matching words/character counts
+    - name: asr_match
+      model_tag: default
+      beam_size: 1
+      text_cleaner: whisper_basic
+    
+    # speaker related metrics
+    # -- spk_similarity: speaker cosine similarity
+    - name: speaker
+      model_tag: default
+    
+    # asvspoof related metrics
+    # -- asvspoof_score: evaluate deepfake likelihood
+    - name: asvspoof_score
+    ```
+  </Tab>
+  
+  <Tab title="Codec">
+    Configuration for audio codec evaluation from `egs/speech.yaml`:
+    
+    ```yaml
+    # codec example yaml config
+    
+    # mcd f0 related metrics
+    - name: mcd_f0
+      f0min: 40
+      f0max: 800
+      mcep_shift: 5
+      mcep_fftl: 1024
+      mcep_dim: 39
+      mcep_alpha: 0.466
+      seq_mismatch_tolerance: 0.1
+      power_threshold: -20
+      dtw: false
+    
+    # signal related metrics
+    # -- sir: signal to interference ratio
+    # -- sar: signal to artifact ratio
+    # -- sdr: signal to distortion ratio
+    # -- ci-sdr: scale-invariant signal to distortion ratio
+    # -- si-snri: scale-invariant signal to noise ratio improvement
+    - name: signal_metric
+    
+    # pesq related metrics
+    - name: pesq
+    
+    # stoi related metrics
+    - name: stoi
+    
+    # discrete speech metrics
+    - name: discrete_speech
+    
+    # pseudo subjective metrics
+    - name: pseudo_mos
+      predictor_types: ["utmos", "dnsmos", "plcmos", "dnsmos_pro_bvcc", "dnsmos_pro_nisqa", "dnsmos_pro_vcc2018"]
+      predictor_args:
+        utmos:
+          fs: 16000
+        dnsmos:
+          fs: 16000
+        plcmos:
+          fs: 16000
+    
+    # speaker related metrics
+    - name: speaker
+      model_tag: default
+    
+    # torchaudio-squim
+    - name: squim_ref
+    - name: squim_no_ref
+    
+    # Sheet SSQA model
+    - name: sheet_ssqa
+    
+    # Speech Enhancement-based Metrics
+    - name: se_snr
+      model_tag: default
+    
+    # DPAM and CDPAM distance metrics
+    - name: dpam
+    - name: cdpam
+    ```
+  </Tab>
+  
+  <Tab title="Speech Enhancement">
+    Configuration for speech enhancement from `egs/demo/se.yaml`:
+    
+    ```yaml
+    # Speech Enhancement Metrics
+    
+    - name: signal_metric
+    - name: pesq
+    - name: stoi
+    
+    - name: pseudo_mos
+      predictor_types: ["dnsmos"]
+      predictor_args:
+        dnsmos:
+          fs: 16000
+    
+    - name: squim_ref
+    - name: squim_no_ref
+    ```
+  </Tab>
+  
+  <Tab title="Singing Voice">
+    Configuration for singing voice synthesis from `egs/demo/svs.yaml`:
+    
+    ```yaml
+    # Singing Voice Synthesis Metrics
+    
+    - name: mcd_f0
+      f0min: 40
+      f0max: 800
+      mcep_shift: 5
+      mcep_fftl: 1024
+      mcep_dim: 39
+      mcep_alpha: 0.466
+      seq_mismatch_tolerance: 0.1
+      power_threshold: -20
+      dtw: true
+    
+    - name: pseudo_mos
+      predictor_types: ["singmos", "singmos_pro"]
+    
+    - name: sheet_ssqa
+    
+    - name: singer
+      model_tag: default
+    ```
+  </Tab>
+</Tabs>
+
+## Metric-Specific Configuration
+
+### MCD & F0 Metrics
+
+For voice conversion and TTS evaluation:
+
+```yaml
+- name: mcd_f0
+  f0min: 40              # Minimum F0 in Hz
+  f0max: 800             # Maximum F0 in Hz
+  mcep_shift: 5          # Frame shift in ms
+  mcep_fftl: 1024        # FFT length
+  mcep_dim: 39           # MCEP dimension
+  mcep_alpha: 0.466      # All-pass constant (0.466 for 16kHz)
+  seq_mismatch_tolerance: 0.1  # Length mismatch tolerance
+  power_threshold: -20   # Power threshold in dB
+  dtw: true              # Use Dynamic Time Warping
+```
+
+<Accordion title="Parameter Details">
+  **F0 Range**: Set based on expected voice range (typically 40-800 for speech)
+  
+  **mcep_alpha**: Frequency warping parameter
+  - 0.466 for 16 kHz sampling
+  - 0.41 for 12 kHz sampling
+  - 0.35 for 8 kHz sampling
+  
+  **DTW**: 
+  - `true` for TTS (allows length differences)
+  - `false` for codec (expects exact alignment)
+</Accordion>
+
+### Pseudo MOS Metrics
+
+Configure multiple MOS predictors:
+
+```yaml
+- name: pseudo_mos
+  predictor_types: ["utmos", "dnsmos", "plcmos"]
+  predictor_args:
+    utmos:
+      fs: 16000
+    dnsmos:
+      fs: 16000
+    plcmos:
+      fs: 16000
+```
+
+<Info>
+  Available predictors: `utmos`, `dnsmos`, `dnsmos_p808`, `plcmos`, `singmos`, `singmos_pro`, `dnsmos_pro_bvcc`, `dnsmos_pro_nisqa`, `dnsmos_pro_vcc2018`
+</Info>
+
+### ASR-based Metrics
+
+Configure word error rate and transcription metrics:
+
+```yaml
+# ESPnet ASR
+- name: espnet_wer
+  model_tag: default
+  beam_size: 5
+  text_cleaner: whisper_basic
+
+# OWSM
+- name: owsm_wer
+  model_tag: default
+  beam_size: 5
+  text_cleaner: whisper_basic
+
+# Whisper
+- name: whisper_wer
+  model_tag: default
+  beam_size: 1
+  text_cleaner: whisper_basic
+```
+
+<Accordion title="Model Tags">
+  **ESPnet models**: Check [ESPnet HuggingFace](https://huggingface.co/espnet) for available models
+  
+  **Whisper models**: `tiny`, `base`, `small`, `medium`, `large`, `large-v2`, `large-v3`
+  
+  **OWSM models**: Multilingual speech models from ESPnet
+</Accordion>
+
+### Speaker/Singer Metrics
+
+Configure embedding-based similarity:
+
+```yaml
+# Speaker similarity
+- name: speaker
+  model_tag: default
+
+# Singer similarity  
+- name: singer
+  model_tag: default
+```
+
+### Distributional Metrics
+
+Configure FAD with different embeddings:
+
+```yaml
+- name: fad
+  fad_embedding: clap-laion-audio
+  cache_dir: versa_cache/fad
+  use_inf: true
+  io: kaldi
+```
+
+<Tabs>
+  <Tab title="CLAP Models">
+    ```yaml
+    fad_embedding: clap-laion-audio  # Default
+    fad_embedding: clap-2023
+    fad_embedding: clap-laion-music
+    ```
+  </Tab>
+  
+  <Tab title="SSL Models">
+    ```yaml
+    fad_embedding: wav2vec2-base-6
+    fad_embedding: wav2vec2-large-12
+    fad_embedding: hubert-base-9
+    fad_embedding: hubert-large-18
+    fad_embedding: wavlm-base-7
+    fad_embedding: wavlm-large-15
+    ```
+  </Tab>
+  
+  <Tab title="Other Models">
+    ```yaml
+    fad_embedding: vggish
+    fad_embedding: whisper-small
+    fad_embedding: dac
+    fad_embedding: encodec-24k
+    fad_embedding: cdpam-acoustic
+    ```
+  </Tab>
+</Tabs>
+
+### Audio-Language Models
+
+Configure large models with caching:
+
+```yaml
+# Audiobox Aesthetics
+- name: audiobox_aesthetics
+  batch_size: 1
+  cache_dir: versa_cache/audiobox
+
+# Qwen2 Audio metrics
+- name: qwen2_speaker_gender_metric
+- name: qwen2_voice_pitch_metric
+- name: qwen2_speech_emotion_metric
+```
+
+## Using Configuration Files
+
+### Command Line Usage
+
+```bash
+versa-scorer \
+  --pred generated.scp \
+  --gt reference.scp \
+  --score_config configs/tts.yaml \
+  --output_file results.json
+```
+
+### Referencing Configs
+
+You can use the provided example configs directly:
+
+```bash
+# Use a demo config
+versa-scorer \
+  --pred outputs/pred.scp \
+  --gt data/gt.scp \
+  --score_config egs/demo/tts.yaml \
+  --output_file results.json
+
+# Use a specific metric config
+versa-scorer \
+  --pred outputs/pred.scp \
+  --score_config egs/separate_metrics/pseudo_mos.yaml \
+  --output_file results.json
+```
+
+## Configuration Tips
+
+<AccordionGroup>
+  <Accordion title="Start with Demo Configs">
+    Use the configs in `egs/demo/` as starting points:
+    - `tts.yaml` - Text-to-Speech
+    - `se.yaml` - Speech Enhancement
+    - `svs.yaml` - Singing Voice Synthesis
+    - `codec.yaml` - Audio Codec
+  </Accordion>
+  
+  <Accordion title="Mix and Match Metrics">
+    Combine metrics from different categories:
+    
+    ```yaml
+    # Independent metrics (no reference needed)
+    - name: pseudo_mos
+      predictor_types: ["utmos"]
+    
+    # Dependent metrics (with reference)
+    - name: pesq
+    - name: stoi
+    
+    # Non-match metrics (with text)
+    - name: whisper_wer
+      model_tag: default
+      beam_size: 1
+    ```
+  </Accordion>
+  
+  <Accordion title="Cache Management">
+    Set cache directories to avoid re-downloading models:
+    
+    ```yaml
+    - name: fad
+      cache_dir: versa_cache/fad
+    
+    - name: audiobox_aesthetics
+      cache_dir: versa_cache/audiobox
+    
+    - name: nomad
+      model_cache: versa_cache/nomad_pt-models
+    ```
+  </Accordion>
+  
+  <Accordion title="GPU vs CPU Configs">
+    VERSA provides separate configs optimized for different hardware:
+    
+    **GPU**: `egs/speech_gpu.yaml` - Includes heavy models  
+    **CPU**: `egs/speech_cpu.yaml` - Lighter, CPU-friendly models
+    
+    Use `--use_gpu true` flag when running GPU configs.
+  </Accordion>
+</AccordionGroup>
+
+## Validation and Debugging
+
+### Check Configuration
+
+<Note>
+  VERSA will validate your config and warn you about:
+  - Missing reference files when dependent metrics are specified
+  - Unsupported parameter combinations
+  - Missing required fields
+</Note>
+
+### Common Issues
+
+<Warning>
+  **Reference Required**: If you configure dependent metrics (like `mcd_f0`, `pesq`, `stoi`) without providing `--gt`, VERSA will skip those metrics and log a warning.
+</Warning>
+
+```bash
+# This will skip MCD/F0 metrics
+versa-scorer \
+  --pred outputs.scp \
+  --score_config config_with_mcd.yaml  # Contains mcd_f0 but no --gt provided
+```
+
+## Advanced Configuration
+
+### Custom Sampling Rates
+
+Some metrics need specific sampling rates:
+
+```yaml
+- name: pseudo_mos
+  predictor_types: ["utmos"]
+  predictor_args:
+    utmos:
+      fs: 16000  # Force 16kHz resampling
+```
+
+### Model Selection
+
+Many metrics support custom model tags:
+
+```yaml
+# Use specific ESPnet model
+- name: speaker
+  model_tag: espnet/spkrec_model_name
+
+# Use specific Whisper size
+- name: whisper_wer
+  model_tag: large-v3
+```
+
+### Batch Processing
+
+Control batch sizes for large models:
+
+```yaml
+- name: audiobox_aesthetics
+  batch_size: 4  # Process 4 samples at once
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Metric Types" icon="chart-line" href="/concepts/metric-types">
+    Understand metric categories
+  </Card>
+  <Card title="Input Formats" icon="file-audio" href="/concepts/input-formats">
+    Learn about supported input formats
+  </Card>
+  <Card title="Example Configs" icon="code" href="https://github.com/shinjiwlab/versa/tree/main/egs">
+    Browse all example configurations
+  </Card>
+  <Card title="Metrics Reference" icon="book" href="/metrics/overview">
+    Detailed metric documentation
+  </Card>
+</CardGroup>

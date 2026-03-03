@@ -1,0 +1,171 @@
+---
+title: Pseudo-MOS
+description: Mean Opinion Score (MOS) prediction using various models
+---
+
+Pseudo-MOS metrics provide automated estimation of Mean Opinion Score (MOS) for audio quality assessment. The system supports multiple predictor models including UTMOS, DNS-MOS, PLC-MOS, and SingMOS variants.
+
+## Setup
+
+<CodeGroup>
+```python Function Signature
+pseudo_mos_setup(
+    predictor_types,
+    predictor_args,
+    cache_dir="versa_cache",
+    use_gpu=False
+)
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField path="predictor_types" type="list[str]" required>
+  List of predictor model types to use. Supported values:
+  - `"utmos"` - UTMOS v1 model for speech quality
+  - `"utmosv2"` - UTMOS v2 model (requires installation via `tools/install_utmosv2.sh`)
+  - `"dnsmos"` - Deep Noise Suppression MOS
+  - `"plcmos"` - Packet Loss Concealment MOS
+  - `"singmos_v1"` - SingMOS v1 for singing voice
+  - `"singmos_pro"` - SingMOS Pro for singing voice
+  - `"dnsmos_pro_bvcc"` - DNS-MOS Pro BVCC variant
+  - `"dnsmos_pro_nisqa"` - DNS-MOS Pro NISQA variant
+  - `"dnsmos_pro_vcc2018"` - DNS-MOS Pro VCC2018 variant
+</ParamField>
+
+<ParamField path="predictor_args" type="dict">
+  Predictor-specific arguments. Example:
+  ```python
+  {
+      "dnsmos": {"fs": 16000},
+      "plcmos": {"fs": 16000}
+  }
+  ```
+</ParamField>
+
+<ParamField path="cache_dir" type="str" default="versa_cache">
+  Directory to cache downloaded models
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="false">
+  Whether to use GPU for computation
+</ParamField>
+
+### Returns
+
+<ResponseField name="predictor_dict" type="dict">
+  Dictionary mapping predictor names to model objects
+</ResponseField>
+
+<ResponseField name="predictor_fs" type="dict">
+  Dictionary mapping predictor names to their expected sampling rates
+</ResponseField>
+
+## Metric Calculation
+
+<CodeGroup>
+```python Function Signature
+pseudo_mos_metric(
+    pred,
+    fs,
+    predictor_dict,
+    predictor_fs,
+    use_gpu=False
+)
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField path="pred" type="numpy.ndarray" required>
+  Audio signal to evaluate (1D array)
+</ParamField>
+
+<ParamField path="fs" type="int" required>
+  Sampling rate of the input audio in Hz
+</ParamField>
+
+<ParamField path="predictor_dict" type="dict" required>
+  Dictionary of predictor models from `pseudo_mos_setup()`
+</ParamField>
+
+<ParamField path="predictor_fs" type="dict" required>
+  Dictionary of predictor sampling rates from `pseudo_mos_setup()`
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="false">
+  Whether to use GPU for computation
+</ParamField>
+
+### Returns
+
+<ResponseField name="scores" type="dict">
+  Dictionary containing MOS scores from each predictor. Possible keys:
+  - `utmos` - UTMOS score (1-5 range)
+  - `utmosv2` - UTMOS v2 score
+  - `dns_overall` - DNS-MOS overall score
+  - `dns_p808` - DNS-MOS P.808 score
+  - `plcmos` - PLC-MOS score
+  - `singmos_v1` - SingMOS v1 score
+  - `singmos_pro` - SingMOS Pro score
+  - `dnsmos_pro_*` - DNS-MOS Pro variant scores
+</ResponseField>
+
+## Usage Example
+
+```python
+import numpy as np
+from versa import pseudo_mos_setup, pseudo_mos_metric
+
+# Setup predictors
+predictor_dict, predictor_fs = pseudo_mos_setup(
+    predictor_types=["utmos", "dnsmos", "plcmos"],
+    predictor_args={
+        "dnsmos": {"fs": 16000},
+        "plcmos": {"fs": 16000}
+    },
+    use_gpu=True
+)
+
+# Load your audio
+audio = np.random.random(16000)  # Replace with actual audio
+fs = 16000
+
+# Calculate MOS scores
+scores = pseudo_mos_metric(
+    audio,
+    fs=fs,
+    predictor_dict=predictor_dict,
+    predictor_fs=predictor_fs,
+    use_gpu=True
+)
+
+print(f"UTMOS: {scores['utmos']:.2f}")
+print(f"DNS Overall: {scores['dns_overall']:.2f}")
+print(f"PLC-MOS: {scores['plcmos']:.2f}")
+```
+
+## Installation Notes
+
+<Note>
+  **UTMOSv2**: Requires installation via `tools/install_utmosv2.sh` and `git lfs` setup
+</Note>
+
+<Note>
+  **DNS-MOS/PLC-MOS**: Requires `pip install speechmos onnxruntime`
+</Note>
+
+<Note>
+  **SingMOS**: Automatically downloaded from torch.hub on first use
+</Note>
+
+## Model Details
+
+| Predictor | Sampling Rate | Use Case | Range |
+|-----------|---------------|----------|-------|
+| UTMOS | 16 kHz | General speech quality | 1-5 |
+| UTMOSv2 | 16 kHz | Enhanced speech quality | 1-5 |
+| DNS-MOS | 16 kHz | Noise suppression quality | 1-5 |
+| PLC-MOS | 16 kHz | Packet loss concealment | 1-5 |
+| SingMOS v1 | 16 kHz | Singing voice quality | 1-5 |
+| SingMOS Pro | 16 kHz | Professional singing quality | 1-5 |

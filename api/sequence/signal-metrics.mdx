@@ -1,0 +1,329 @@
+---
+title: Signal Metrics
+description: Source separation and signal quality metrics (SDR, SIR, SAR, SI-SNR, CI-SDR)
+---
+
+Signal metrics evaluate the quality of source separation, speech enhancement, and audio restoration using reference-based measurements.
+
+## Function Signature
+
+<CodeGroup>
+```python signal_metric
+signal_metric(
+    pred_x,
+    gt_x
+)
+```
+</CodeGroup>
+
+## Parameters
+
+<ParamField path="pred_x" type="numpy.ndarray" required>
+  Predicted/enhanced audio signal. Accepted shapes:
+  - 1D array: `(samples,)` - automatically expanded to `(1, samples)`
+  - 2D array: `(channels, samples)`
+</ParamField>
+
+<ParamField path="gt_x" type="numpy.ndarray" required>
+  Ground truth/reference audio signal. Accepted shapes:
+  - 1D array: `(samples,)` - automatically expanded to `(1, samples)`
+  - 2D array: `(channels, samples)`
+</ParamField>
+
+<Note>
+  **Length Handling**: If signals have different lengths, both are automatically truncated to the shorter length.
+</Note>
+
+## Returns
+
+<ResponseField name="sdr" type="float">
+  **Signal-to-Distortion Ratio** in dB (higher is better)
+  - Measures overall signal quality
+  - Combines artifacts, interference, and noise
+  - Typical range: -10 to 30 dB
+</ResponseField>
+
+<ResponseField name="sir" type="float">
+  **Signal-to-Interference Ratio** in dB (higher is better)
+  - Measures separation from interfering sources
+  - Important for source separation tasks
+  - Typical range: 0 to 40 dB
+</ResponseField>
+
+<ResponseField name="sar" type="float">
+  **Signal-to-Artifacts Ratio** in dB (higher is better)
+  - Measures processing artifacts introduced
+  - Important for enhancement quality
+  - Typical range: 0 to 30 dB
+</ResponseField>
+
+<ResponseField name="si_snr" type="float">
+  **Scale-Invariant Signal-to-Noise Ratio** in dB (higher is better)
+  - Scale-independent signal quality measure
+  - Robust to amplitude differences
+  - Widely used in speech enhancement
+</ResponseField>
+
+<ResponseField name="ci_sdr" type="float">
+  **Convolutive-Invariant Signal-to-Distortion Ratio** in dB (higher is better)
+  - Invariant to filtering/convolution operations
+  - Uses 512-tap filter by default
+  - Better for reverberant conditions
+</ResponseField>
+
+## Usage Examples
+
+### Basic Usage
+
+```python
+import numpy as np
+from versa import signal_metric
+
+# Load audio signals
+reference = np.random.random(16000)  # Replace with actual reference
+enhanced = np.random.random(16000)   # Replace with actual enhanced audio
+
+# Calculate all signal metrics
+results = signal_metric(
+    pred_x=enhanced,
+    gt_x=reference
+)
+
+print(f"SDR: {results['sdr']:.2f} dB")
+print(f"SIR: {results['sir']:.2f} dB")
+print(f"SAR: {results['sar']:.2f} dB")
+print(f"SI-SNR: {results['si_snr']:.2f} dB")
+print(f"CI-SDR: {results['ci_sdr']:.2f} dB")
+```
+
+### Multi-Channel Audio
+
+```python
+import numpy as np
+from versa import signal_metric
+
+# Multi-channel signals (e.g., stereo)
+reference = np.random.random((2, 48000))  # 2 channels
+enhanced = np.random.random((2, 48000))
+
+results = signal_metric(
+    pred_x=enhanced,
+    gt_x=reference
+)
+
+print(f"Multi-channel SDR: {results['sdr']:.2f} dB")
+```
+
+### Different Length Signals
+
+```python
+import numpy as np
+from versa import signal_metric
+
+# Signals with different lengths
+reference = np.random.random(20000)
+enhanced = np.random.random(18000)  # Shorter
+
+# Automatically truncated to min length (18000)
+results = signal_metric(
+    pred_x=enhanced,
+    gt_x=reference
+)
+
+print(f"SDR: {results['sdr']:.2f} dB")
+```
+
+### Speech Enhancement Evaluation
+
+```python
+import numpy as np
+import soundfile as sf
+from versa import signal_metric
+
+# Load clean and enhanced speech
+clean_speech, sr = sf.read("clean.wav")
+enhanced_speech, sr = sf.read("enhanced.wav")
+
+# Evaluate enhancement quality
+results = signal_metric(
+    pred_x=enhanced_speech,
+    gt_x=clean_speech
+)
+
+print("Speech Enhancement Results:")
+print(f"  SDR: {results['sdr']:.2f} dB")
+print(f"  SI-SNR: {results['si_snr']:.2f} dB (scale-invariant)")
+print(f"  SAR: {results['sar']:.2f} dB (artifacts)")
+```
+
+### Source Separation Evaluation
+
+```python
+import numpy as np
+import soundfile as sf
+from versa import signal_metric
+
+# Load reference and separated source
+reference_vocals, sr = sf.read("vocals_ref.wav")
+separated_vocals, sr = sf.read("vocals_separated.wav")
+
+# Evaluate separation quality
+results = signal_metric(
+    pred_x=separated_vocals,
+    gt_x=reference_vocals
+)
+
+print("Source Separation Results:")
+print(f"  SDR: {results['sdr']:.2f} dB")
+print(f"  SIR: {results['sir']:.2f} dB (interference rejection)")
+print(f"  CI-SDR: {results['ci_sdr']:.2f} dB (convolution-invariant)")
+```
+
+## Metric Details
+
+### SDR (Signal-to-Distortion Ratio)
+
+**Formula**: Ratio of target signal power to distortion power
+
+**Interpretation**:
+- Measures overall quality including all types of errors
+- Higher values indicate better quality
+- Combines SIR and SAR information
+
+**Use Cases**:
+- Overall system performance
+- General quality assessment
+- Benchmark comparisons
+
+### SIR (Signal-to-Interference Ratio)
+
+**Formula**: Ratio of target signal to interference from other sources
+
+**Interpretation**:
+- Specifically measures separation performance
+- High SIR means good source isolation
+- Low SIR indicates source leakage
+
+**Use Cases**:
+- Source separation evaluation
+- Multi-speaker scenarios
+- Music source separation
+
+### SAR (Signal-to-Artifacts Ratio)
+
+**Formula**: Ratio of target signal to processing artifacts
+
+**Interpretation**:
+- Measures algorithm-introduced distortions
+- High SAR means clean processing
+- Low SAR indicates processing artifacts
+
+**Use Cases**:
+- Enhancement algorithm quality
+- Codec evaluation
+- Processing artifact detection
+
+### SI-SNR (Scale-Invariant SNR)
+
+**Formula**: SNR computed after optimal scaling
+
+**Interpretation**:
+- Invariant to signal amplitude
+- Focuses on waveform shape similarity
+- Popular in neural network training
+
+**Advantages**:
+- No sensitivity to volume differences
+- Differentiable (good for training)
+- Robust metric for speech tasks
+
+**Use Cases**:
+- Speech enhancement
+- Neural network training loss
+- Speaker separation
+
+### CI-SDR (Convolutive-Invariant SDR)
+
+**Formula**: SDR after optimal filtering (512-tap filter)
+
+**Interpretation**:
+- Invariant to linear filtering/convolution
+- Handles room acoustics effects
+- More robust than SDR in reverb
+
+**Use Cases**:
+- Reverberant environments
+- Far-field speech processing
+- Acoustic echo cancellation
+
+## Interpretation Guidelines
+
+### Quality Ranges
+
+| Metric | Excellent | Good | Fair | Poor |
+|--------|-----------|------|------|------|
+| SDR | > 18 dB | 12-18 dB | 6-12 dB | < 6 dB |
+| SIR | > 20 dB | 15-20 dB | 10-15 dB | < 10 dB |
+| SAR | > 15 dB | 10-15 dB | 5-10 dB | < 5 dB |
+| SI-SNR | > 15 dB | 10-15 dB | 5-10 dB | < 5 dB |
+| CI-SDR | > 15 dB | 10-15 dB | 5-10 dB | < 5 dB |
+
+### Task-Specific Benchmarks
+
+**Speech Enhancement**:
+- Target SI-SNR improvement: 10-20 dB
+- Typical SDR: 10-18 dB
+- SAR importance: High
+
+**Music Source Separation**:
+- Good SDR: 6-12 dB (vocals), 8-14 dB (accompaniment)
+- SIR importance: Critical
+- State-of-the-art: 8-10 dB SDR
+
+**Speaker Separation**:
+- Target SI-SNR: 12-18 dB
+- SIR importance: Very high
+- CI-SDR useful for reverberant conditions
+
+## Implementation Details
+
+### Backends
+
+- **SDR, SIR, SAR**: Uses `mir_eval.separation.bss_eval_sources`
+- **SI-SNR**: Uses `fast_bss_eval.si_sdr_loss`
+- **CI-SDR**: Uses `ci_sdr.pt.ci_sdr_loss`
+
+### Computation Parameters
+
+- **Permutation**: `compute_permutation=False` (assumes correct channel order)
+- **CI-SDR filter length**: 512 taps (default)
+- **SI-SNR zero mean**: Controlled by backend default
+
+## Dependencies
+
+```bash
+pip install mir_eval fast_bss_eval ci_sdr torch
+```
+
+## Use Cases
+
+- **Speech Enhancement**: Noise reduction, dereverberation
+- **Source Separation**: Music, speech, environmental sounds
+- **Echo Cancellation**: Acoustic echo removal
+- **Beamforming**: Multi-microphone processing
+- **Codec Evaluation**: Audio compression quality
+- **Model Training**: Loss functions and validation
+
+## Notes
+
+<Note>
+  **Channel Ordering**: Assumes predicted and reference channels are aligned. Enable permutation if channel order is unknown.
+</Note>
+
+<Note>
+  **Negative Values**: Negative dB values indicate predicted signal is worse than the input mixture.
+</Note>
+
+<Warning>
+  **Shape Requirements**: Input must be 1D or 2D. Higher dimensional arrays will cause errors.
+</Warning>

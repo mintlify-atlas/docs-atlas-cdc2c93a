@@ -1,0 +1,503 @@
+---
+title: Distributed Evaluation
+description: Scale VERSA evaluation across multiple nodes and GPUs using Slurm
+---
+
+VERSA includes built-in support for distributed evaluation using Slurm, enabling efficient processing of large datasets across multiple compute nodes and GPUs.
+
+## Overview
+
+The distributed evaluation system automatically:
+- Splits your dataset into chunks
+- Submits parallel Slurm jobs for each chunk
+- Handles GPU and CPU resource allocation
+- Aggregates results from all jobs
+
+## Quick Start
+
+### Basic Usage
+
+Run distributed evaluation with ground truth:
+
+```bash
+./launch_slurm.sh \
+    data/predicted.scp \
+    data/reference.scp \
+    results/experiment1 \
+    10
+```
+
+This splits the data into 10 chunks and processes them in parallel.
+
+### Without Ground Truth
+
+For reference-free evaluation:
+
+```bash
+./launch_slurm.sh \
+    data/predicted.scp \
+    None \
+    results/noref_experiment \
+    10
+```
+
+## Launch Script Arguments
+
+<ParamField path="pred_wavscp" type="string" required>
+  Path to prediction wav.scp file containing utterance IDs and audio paths.
+</ParamField>
+
+<ParamField path="gt_wavscp" type="string" required>
+  Path to ground truth wav.scp file. Use `"None"` if not available for reference-free evaluation.
+</ParamField>
+
+<ParamField path="score_dir" type="string" required>
+  Directory to store all results, logs, and intermediate files.
+</ParamField>
+
+<ParamField path="split_size" type="integer" required>
+  Number of chunks to split the data into. More chunks = more parallel jobs.
+</ParamField>
+
+### Optional Flags
+
+<ParamField path="--cpu-only" type="flag">
+  Run only CPU jobs (skip GPU metrics).
+  
+  ```bash
+  ./launch_slurm.sh data/pred.scp data/gt.scp results 10 --cpu-only
+  ```
+</ParamField>
+
+<ParamField path="--gpu-only" type="flag">
+  Run only GPU jobs (skip CPU metrics).
+  
+  ```bash
+  ./launch_slurm.sh data/pred.scp data/gt.scp results 10 --gpu-only
+  ```
+</ParamField>
+
+<ParamField path="--text" type="string">
+  Path to text transcription file for WER/CER metrics.
+  
+  ```bash
+  ./launch_slurm.sh data/pred.scp data/gt.scp results 10 --text=data/text
+  ```
+</ParamField>
+
+## Configuration
+
+### Environment Variables
+
+Customize resource allocation using environment variables:
+
+<CodeGroup>
+
+```bash Partition Selection
+# GPU partition (default: general)
+export GPU_PARTITION=gpu_partition
+
+# CPU partition (default: general)
+export CPU_PARTITION=cpu_partition
+
+./launch_slurm.sh data/pred.scp data/gt.scp results 10
+```
+
+```bash Time Limits
+# GPU job time limit (default: 2-0:00:00 = 2 days)
+export GPU_TIME=1-12:00:00
+
+# CPU job time limit (default: 2-0:00:00 = 2 days)
+export CPU_TIME=1-12:00:00
+
+./launch_slurm.sh data/pred.scp data/gt.scp results 10
+```
+
+```bash Resource Allocation
+# CPUs per task (default: 8)
+export CPUS=16
+
+# Memory per CPU in MB (default: 2000)
+export MEM=4000
+
+# GPU type (default: any GPU)
+export GPU_TYPE=a100
+
+./launch_slurm.sh data/pred.scp data/gt.scp results 10
+```
+
+```bash I/O Type
+# Audio I/O interface (default: soundfile)
+# Options: soundfile, kaldi, dir
+export IO_TYPE=kaldi
+
+./launch_slurm.sh data/pred.scp data/gt.scp results 10
+```
+
+```bash Additional Options
+# Additional CPU Slurm options
+export CPU_OTHER_OPTS="--qos=normal --account=myproject"
+
+# Additional GPU Slurm options
+export GPU_OTHER_OPTS="--qos=gpu --account=myproject"
+
+./launch_slurm.sh data/pred.scp data/gt.scp results 10
+```
+
+</CodeGroup>
+
+## Complete Workflow
+
+<Steps>
+  <Step title="Prepare Data">
+    Create wav.scp files listing your audio:
+    ```bash
+    # predicted.scp
+    utt_001 /path/to/pred_001.wav
+    utt_002 /path/to/pred_002.wav
+    utt_003 /path/to/pred_003.wav
+    
+    # reference.scp
+    utt_001 /path/to/ref_001.wav
+    utt_002 /path/to/ref_002.wav
+    utt_003 /path/to/ref_003.wav
+    ```
+  </Step>
+  
+  <Step title="Configure Resources">
+    Set environment variables for your cluster:
+    ```bash
+    export GPU_PARTITION=gpu
+    export CPU_PARTITION=cpu
+    export GPU_TYPE=a100
+    export CPUS=16
+    export MEM=4000
+    ```
+  </Step>
+  
+  <Step title="Launch Jobs">
+    Submit the distributed evaluation:
+    ```bash
+    ./launch_slurm.sh \
+        data/predicted.scp \
+        data/reference.scp \
+        results/experiment1 \
+        20
+    ```
+    
+    This creates:
+    - `results/experiment1/pred/` - Split prediction files
+    - `results/experiment1/gt/` - Split reference files
+    - `results/experiment1/logs/` - Job logs
+    - `results/experiment1/result/` - Partial results
+    - `results/experiment1/job_ids.txt` - Job tracking
+  </Step>
+  
+  <Step title="Monitor Progress">
+    Track job status:
+    ```bash
+    # Check job queue
+    squeue -u $USER
+    
+    # Watch specific jobs
+    watch -n 5 'squeue -u $USER | grep experiment1'
+    
+    # Check logs
+    tail -f results/experiment1/logs/gpu_*.out
+    tail -f results/experiment1/logs/cpu_*.out
+    ```
+  </Step>
+  
+  <Step title="Aggregate Results">
+    Combine results after all jobs complete:
+    ```bash
+    # Combine GPU results
+    cat results/experiment1/result/*.result.gpu.txt > \
+        results/experiment1/utt_result.gpu.txt
+    
+    # Combine CPU results
+    cat results/experiment1/result/*.result.cpu.txt > \
+        results/experiment1/utt_result.cpu.txt
+    ```
+  </Step>
+  
+  <Step title="Visualize Results">
+    Analyze the aggregated results:
+    ```bash
+    # GPU metrics
+    python scripts/show_result.py \
+        results/experiment1/utt_result.gpu.txt
+    
+    # CPU metrics
+    python scripts/show_result.py \
+        results/experiment1/utt_result.cpu.txt
+    ```
+  </Step>
+</Steps>
+
+## Advanced Examples
+
+### GPU-Only Large Scale Evaluation
+
+```bash
+#!/bin/bash
+# evaluate_tts.sh - Evaluate 100k TTS samples
+
+export GPU_PARTITION=gpu_a100
+export GPU_TYPE=a100
+export GPU_TIME=2-00:00:00
+export CPUS=16
+export MEM=8000
+
+./launch_slurm.sh \
+    exp/tts_model/generated_100k.scp \
+    data/reference_100k.scp \
+    results/tts_full_eval \
+    100 \
+    --gpu-only
+
+echo "Submitted 100 GPU jobs"
+echo "Monitor with: squeue -u $USER"
+```
+
+### Multi-Language with Transcriptions
+
+```bash
+#!/bin/bash
+# evaluate_multilingual.sh
+
+export IO_TYPE=soundfile
+export GPU_PARTITION=gpu
+export CPU_PARTITION=cpu
+
+./launch_slurm.sh \
+    data/multilingual_pred.scp \
+    data/multilingual_ref.scp \
+    results/multilingual_eval \
+    50 \
+    --text=data/multilingual_text.txt
+```
+
+### CPU-Only for Basic Metrics
+
+```bash
+#!/bin/bash
+# fast_cpu_eval.sh - Quick PESQ/STOI evaluation
+
+export CPU_PARTITION=cpu
+export CPUS=8
+export MEM=2000
+export CPU_TIME=0-06:00:00
+
+./launch_slurm.sh \
+    data/enhanced_speech.scp \
+    data/clean_speech.scp \
+    results/enhancement_eval \
+    20 \
+    --cpu-only
+```
+
+### Kaldi/ESPnet Integration
+
+```bash
+#!/bin/bash
+# evaluate_espnet_output.sh
+
+export IO_TYPE=kaldi
+export GPU_PARTITION=gpu
+
+./launch_slurm.sh \
+    exp/train_tts/decode/wav.scp \
+    dump/test/wav.scp \
+    exp/train_tts/versa_eval \
+    30
+```
+
+## Directory Structure
+
+After launching, your score directory contains:
+
+```
+results/experiment1/
+├── pred/
+│   ├── predicted.scp_000
+│   ├── predicted.scp_001
+│   └── ...
+├── gt/
+│   ├── reference.scp_000
+│   ├── reference.scp_001
+│   └── ...
+├── text/          # If --text provided
+│   ├── text_000
+│   └── ...
+├── result/
+│   ├── predicted.scp_000.result.gpu.txt
+│   ├── predicted.scp_000.result.cpu.txt
+│   └── ...
+├── logs/
+│   ├── gpu_predicted.scp_000_<jobid>.out
+│   ├── gpu_predicted.scp_000_<jobid>.err
+│   ├── cpu_predicted.scp_000_<jobid>.out
+│   └── cpu_predicted.scp_000_<jobid>.err
+├── job_ids.txt
+└── job_status.txt
+```
+
+## Job Tracking
+
+The `job_ids.txt` file tracks all submitted jobs:
+
+```text
+GPU:12345678 CHUNK:1/20 FILE:predicted.scp_000
+CPU:12345679 CHUNK:1/20 FILE:predicted.scp_000
+GPU:12345680 CHUNK:2/20 FILE:predicted.scp_001
+CPU:12345681 CHUNK:2/20 FILE:predicted.scp_001
+...
+```
+
+## Dependent Job Submission
+
+Create jobs that run after evaluation completes:
+
+```bash
+# Launch evaluation
+./launch_slurm.sh data/pred.scp data/gt.scp results/eval 10
+
+# Extract job IDs for dependency
+GPU_JOBS=$(grep "GPU:" results/eval/job_ids.txt | cut -d':' -f2 | cut -d' ' -f1 | paste -sd,)
+CPU_JOBS=$(grep "CPU:" results/eval/job_ids.txt | cut -d':' -f2 | cut -d' ' -f1 | paste -sd,)
+ALL_JOBS="${GPU_JOBS},${CPU_JOBS}"
+
+# Submit post-processing job
+sbatch --dependency=afterok:${ALL_JOBS} \
+    --job-name=aggregate_results \
+    --output=results/eval/aggregate.log \
+    ./scripts/aggregate_and_visualize.sh results/eval
+```
+
+## Troubleshooting
+
+<Accordion title="Jobs failing immediately">
+  Check the error logs:
+  ```bash
+  ls -lt results/experiment1/logs/*.err | head
+  cat results/experiment1/logs/gpu_*.err
+  ```
+  
+  Common issues:
+  - Incorrect partition names
+  - GPU type not available
+  - File paths not accessible from compute nodes
+  - Missing dependencies
+</Accordion>
+
+<Accordion title="Jobs pending for long time">
+  Check resource availability:
+  ```bash
+  sinfo -p <partition_name>
+  squeue -p <partition_name>
+  ```
+  
+  Solutions:
+  - Reduce resource requirements (CPUS, MEM)
+  - Use different partition
+  - Split into more chunks with shorter time limits
+</Accordion>
+
+<Accordion title="Out of memory errors">
+  Increase memory allocation:
+  ```bash
+  export MEM=8000  # 8GB per CPU
+  ./launch_slurm.sh ...
+  ```
+  
+  Or reduce chunk size:
+  ```bash
+  # More chunks = fewer utterances per job
+  ./launch_slurm.sh data/pred.scp data/gt.scp results 100  # was 50
+  ```
+</Accordion>
+
+<Accordion title="GPU out of memory">
+  Solutions:
+  - Request more GPUs per job (modify `egs/run_gpu.sh`)
+  - Use GPU with more memory: `export GPU_TYPE=a100`
+  - Reduce batch size in config files
+  - Process in smaller chunks
+</Accordion>
+
+## Performance Optimization
+
+<CardGroup cols={2}>
+  <Card title="Optimal Chunk Size" icon="scissors">
+    Balance parallelism and overhead:
+    - Small datasets (< 1000 files): 5-10 chunks
+    - Medium datasets (1k-10k): 20-50 chunks
+    - Large datasets (> 10k): 50-200 chunks
+  </Card>
+  
+  <Card title="CPU vs GPU Split" icon="microchip">
+    Use both by default:
+    - GPU: Neural metrics (UTMOS, Speaker Similarity)
+    - CPU: Traditional metrics (PESQ, STOI, MCD)
+    - Both run in parallel for maximum efficiency
+  </Card>
+  
+  <Card title="Resource Allocation" icon="gauge">
+    Right-size your resources:
+    - GPU jobs: 8-16 CPUs, 4-8GB RAM per CPU
+    - CPU jobs: 8 CPUs, 2-4GB RAM per CPU
+    - Longer jobs need more conservative estimates
+  </Card>
+  
+  <Card title="I/O Optimization" icon="hard-drive">
+    Choose the right I/O method:
+    - `soundfile`: Direct file access (simple)
+    - `kaldi`: Efficient for large datasets
+    - `dir`: Easiest for directory of files
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Warning>
+**Always test with a small subset first!**
+
+Before launching 100+ jobs, test with 2-3 chunks:
+```bash
+./launch_slurm.sh data/pred.scp data/gt.scp test_run 3
+```
+
+Verify that:
+- Jobs complete successfully
+- Output format is correct
+- Resource allocation is appropriate
+</Warning>
+
+<Tip>
+**Save your configuration**
+
+Create a launch script for reproducibility:
+```bash
+#!/bin/bash
+# my_experiment.sh
+export GPU_PARTITION=gpu_a100
+export GPU_TYPE=a100
+export CPUS=16
+export MEM=8000
+
+./launch_slurm.sh \
+    $1 \
+    $2 \
+    $3 \
+    50
+```
+
+Usage: `./my_experiment.sh pred.scp ref.scp results/exp1`
+</Tip>
+
+## Next Steps
+
+- Learn about [visualization tools](/guides/visualization) to analyze distributed results
+- Explore [CLI usage](/guides/cli-usage) to understand individual job execution
+- Check [Python API](/guides/python-api) for custom metric integration

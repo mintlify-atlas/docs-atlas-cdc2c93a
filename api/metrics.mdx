@@ -1,0 +1,579 @@
+---
+title: 'Metrics'
+description: 'Metric type definitions and constants for VERSA evaluation framework'
+---
+
+## Overview
+
+The metrics module defines two primary categories of evaluation metrics: string-based metrics (STR_METRIC) and numerical metrics (NUM_METRIC). These constants are used throughout VERSA to properly handle different metric types during aggregation and summarization.
+
+## Metric Categories
+
+### String Metrics (STR_METRIC)
+
+String metrics return textual values rather than numerical scores. These are typically used for:
+- Transcriptions and hypothesis text
+- Categorical classifications
+- Descriptive evaluations from language models
+
+**Location:** `versa/metrics.py:6-57`
+
+```python
+from versa.metrics import STR_METRIC
+
+# String metrics are excluded from numerical aggregation
+if metric_name in STR_METRIC:
+    # Handle as text output
+    pass
+else:
+    # Compute numerical average
+    avg = sum(scores) / len(scores)
+```
+
+### Numerical Metrics (NUM_METRIC)
+
+Numerical metrics return scalar values that can be averaged or summed across utterances.
+
+**Location:** `versa/metrics.py:59-219`
+
+```python
+from versa.metrics import NUM_METRIC
+
+# Only numerical metrics are included in summary statistics
+if metric_name in NUM_METRIC:
+    average_score = sum(values) / len(values)
+```
+
+## String Metric List
+
+### VAD and Speech Detection
+
+<ResponseField name="vad_info" type="string">
+  Voice Activity Detection information indicating speech segments.
+</ResponseField>
+
+### Language and Speaker Characteristics
+
+<ResponseField name="language" type="string">
+  Detected or predicted language.
+</ResponseField>
+
+<ResponseField name="qwen_speaker_count" type="string">
+  Number of speakers detected (from Qwen2-Audio model).
+</ResponseField>
+
+<ResponseField name="qwen_speaker_gender" type="string">
+  Speaker gender classification (e.g., "male", "female").
+</ResponseField>
+
+<ResponseField name="qwen_speaker_age" type="string">
+  Speaker age estimation (e.g., "young", "middle-aged", "elderly").
+</ResponseField>
+
+<ResponseField name="qwen_speech_impairment" type="string">
+  Detection of speech impairments or disorders.
+</ResponseField>
+
+### Voice Properties
+
+<ResponseField name="qwen_pitch_range" type="string">
+  Pitch range classification (e.g., "narrow", "wide").
+</ResponseField>
+
+<ResponseField name="qwen_voice_pitch" type="string">
+  Voice pitch level (e.g., "low", "medium", "high").
+</ResponseField>
+
+<ResponseField name="qwen_voice_type" type="string">
+  Voice type or quality descriptor.
+</ResponseField>
+
+<ResponseField name="qwen_speech_volume_level" type="string">
+  Speech volume level (e.g., "quiet", "normal", "loud").
+</ResponseField>
+
+### Speech Content
+
+<ResponseField name="qwen_language" type="string">
+  Language detected by Qwen2-Audio model.
+</ResponseField>
+
+<ResponseField name="qwen_speech_register" type="string">
+  Speech register or formality level (e.g., "formal", "casual").
+</ResponseField>
+
+<ResponseField name="qwen_vocabulary_complexity" type="string">
+  Vocabulary complexity assessment (e.g., "simple", "complex").
+</ResponseField>
+
+<ResponseField name="qwen_speech_purpose" type="string">
+  Purpose or intent of the speech (e.g., "informative", "persuasive").
+</ResponseField>
+
+### Speech Delivery
+
+<ResponseField name="qwen_speech_emotion" type="string">
+  Emotional tone detected (e.g., "happy", "sad", "neutral").
+</ResponseField>
+
+<ResponseField name="qwen_speech_clarity" type="string">
+  Speech clarity assessment (e.g., "clear", "unclear").
+</ResponseField>
+
+<ResponseField name="qwen_speech_rate" type="string">
+  Speech rate classification (e.g., "slow", "normal", "fast").
+</ResponseField>
+
+<ResponseField name="qwen_speaking_style" type="string">
+  Speaking style descriptor (e.g., "monotone", "expressive").
+</ResponseField>
+
+<ResponseField name="qwen_laughter_crying" type="string">
+  Detection of non-speech vocalizations.
+</ResponseField>
+
+### Recording Environment
+
+<ResponseField name="qwen_speech_background_environment" type="string">
+  Background environment description (e.g., "quiet", "noisy", "outdoor").
+</ResponseField>
+
+<ResponseField name="qwen_overlapping_speech" type="string">
+  Detection of overlapping speech from multiple speakers.
+</ResponseField>
+
+<ResponseField name="qwen_recording_quality" type="string">
+  Overall recording quality assessment.
+</ResponseField>
+
+<ResponseField name="qwen_channel_type" type="string">
+  Audio channel type (e.g., "mono", "stereo").
+</ResponseField>
+
+### Transcription Outputs
+
+<ResponseField name="ref_text" type="string">
+  Reference transcription text.
+</ResponseField>
+
+<ResponseField name="espnet_hyp_text" type="string">
+  Hypothesis transcription from ESPnet ASR model.
+</ResponseField>
+
+<ResponseField name="owsm_hyp_text" type="string">
+  Hypothesis transcription from OWSM (Open Whisper-Style Model).
+</ResponseField>
+
+<ResponseField name="whisper_hyp_text" type="string">
+  Hypothesis transcription from Whisper ASR model.
+</ResponseField>
+
+### ARECHO String Metrics
+
+ARECHO (Audio REcording CHaracterization with Ontologies) provides comprehensive audio analysis:
+
+<ResponseField name="arecho_qwen_*" type="string">
+  ARECHO variants of all Qwen2-Audio string metrics (vocabulary_complexity, speaker_age, voice_pitch, etc.).
+</ResponseField>
+
+<ResponseField name="arecho_rir_room_size" type="string">
+  Room size estimation from room impulse response analysis.
+</ResponseField>
+
+<ResponseField name="arecho_real_language" type="string">
+  Real language detection (ground truth comparison).
+</ResponseField>
+
+<ResponseField name="arecho_language" type="string">
+  Predicted language from ARECHO analysis.
+</ResponseField>
+
+## Numerical Metric List
+
+### MOS and Quality Prediction
+
+<ResponseField name="dnsmos_overall" type="float">
+  Overall quality score from DNSMOS (Deep Noise Suppression MOS predictor).
+</ResponseField>
+
+<ResponseField name="dnsmos_p808" type="float">
+  P.808 standard MOS score from DNSMOS.
+</ResponseField>
+
+<ResponseField name="nisqa" type="float">
+  Non-Intrusive Speech Quality Assessment score.
+</ResponseField>
+
+<ResponseField name="utmos" type="float">
+  Universal MOS predictor score (range: 1-5).
+</ResponseField>
+
+<ResponseField name="utmosv2" type="float">
+  UTMOS version 2 score with improved accuracy.
+</ResponseField>
+
+<ResponseField name="plcmos" type="float">
+  Packet Loss Concealment MOS predictor.
+</ResponseField>
+
+<ResponseField name="singmos" type="float">
+  Singing voice MOS predictor.
+</ResponseField>
+
+<ResponseField name="sheet_ssqa" type="float">
+  Self-Supervised Speech Quality Assessment score.
+</ResponseField>
+
+### Reference-Based Quality Metrics
+
+<ResponseField name="pesq" type="float">
+  Perceptual Evaluation of Speech Quality (range: -0.5 to 4.5).
+</ResponseField>
+
+<ResponseField name="stoi" type="float">
+  Short-Time Objective Intelligibility (range: 0 to 1).
+</ResponseField>
+
+<ResponseField name="visqol" type="float">
+  Virtual Speech Quality Objective Listener.
+</ResponseField>
+
+<ResponseField name="scoreq_ref" type="float">
+  ScoreQ reference-based quality score.
+</ResponseField>
+
+<ResponseField name="scoreq_nr" type="float">
+  ScoreQ no-reference quality score.
+</ResponseField>
+
+### Signal-Based Metrics
+
+<ResponseField name="mcd" type="float">
+  Mel-Cepstral Distortion (dB) - lower is better.
+</ResponseField>
+
+<ResponseField name="f0_corr" type="float">
+  F0 (fundamental frequency) correlation.
+</ResponseField>
+
+<ResponseField name="f0_rmse" type="float">
+  F0 root mean squared error.
+</ResponseField>
+
+<ResponseField name="sir" type="float">
+  Signal-to-Interference Ratio (dB).
+</ResponseField>
+
+<ResponseField name="sar" type="float">
+  Signal-to-Artifact Ratio (dB).
+</ResponseField>
+
+<ResponseField name="sdr" type="float">
+  Signal-to-Distortion Ratio (dB).
+</ResponseField>
+
+<ResponseField name="ci-sdr" type="float">
+  Scale-invariant Signal-to-Distortion Ratio.
+</ResponseField>
+
+<ResponseField name="si-snr" type="float">
+  Scale-invariant Signal-to-Noise Ratio (dB).
+</ResponseField>
+
+### Sequence Alignment Metrics
+
+<ResponseField name="warpq" type="float">
+  WARP-Q sequence alignment quality metric.
+</ResponseField>
+
+<ResponseField name="speech_bert" type="float">
+  Speech BERT similarity score.
+</ResponseField>
+
+<ResponseField name="speech_belu" type="float">
+  Speech BLEU score for discrete speech representation.
+</ResponseField>
+
+<ResponseField name="speech_token_distance" type="float">
+  Distance between discrete speech token sequences.
+</ResponseField>
+
+### WER/CER Metrics
+
+<ResponseField name="espnet_wer" type="float">
+  Word Error Rate from ESPnet ASR (sum across utterances).
+</ResponseField>
+
+<ResponseField name="espnet_cer" type="float">
+  Character Error Rate from ESPnet ASR.
+</ResponseField>
+
+<ResponseField name="owsm_wer" type="float">
+  Word Error Rate from OWSM model.
+</ResponseField>
+
+<ResponseField name="owsm_cer" type="float">
+  Character Error Rate from OWSM model.
+</ResponseField>
+
+<ResponseField name="whisper_wer" type="float">
+  Word Error Rate from Whisper ASR.
+</ResponseField>
+
+<ResponseField name="whisper_cer" type="float">
+  Character Error Rate from Whisper ASR.
+</ResponseField>
+
+<Note>
+  WER and CER metrics are summed (not averaged) in the summary to compute total errors across the corpus.
+</Note>
+
+### Speaker and Emotion Similarity
+
+<ResponseField name="spk_similarity" type="float">
+  Speaker embedding cosine similarity (range: -1 to 1).
+</ResponseField>
+
+<ResponseField name="emotion_similarity" type="float">
+  Emotion embedding similarity score.
+</ResponseField>
+
+### Enhancement and Separation Metrics
+
+<ResponseField name="torch_squim_pesq" type="float">
+  PESQ score from TorchAudio SQUIM.
+</ResponseField>
+
+<ResponseField name="torch_squim_stoi" type="float">
+  STOI score from TorchAudio SQUIM.
+</ResponseField>
+
+<ResponseField name="torch_squim_si_sdr" type="float">
+  SI-SDR from TorchAudio SQUIM.
+</ResponseField>
+
+<ResponseField name="torch_squim_mos" type="float">
+  MOS prediction from TorchAudio SQUIM.
+</ResponseField>
+
+<ResponseField name="se_snr" type="float">
+  Signal-to-Noise Ratio from speech enhancement model.
+</ResponseField>
+
+<ResponseField name="se_si_snr" type="float">
+  Scale-invariant SNR from enhancement model.
+</ResponseField>
+
+<ResponseField name="se_sdr" type="float">
+  SDR from speech enhancement model.
+</ResponseField>
+
+<ResponseField name="se_ci_sdr" type="float">
+  Scale-invariant SDR from enhancement model.
+</ResponseField>
+
+<ResponseField name="se_sar" type="float">
+  SAR from speech enhancement model.
+</ResponseField>
+
+### Perceptual Audio Metrics
+
+<ResponseField name="pam" type="float">
+  Perceptual Audio Metric score.
+</ResponseField>
+
+<ResponseField name="cdpam" type="float">
+  Correspondence-aware DPAM metric.
+</ResponseField>
+
+<ResponseField name="dpam" type="float">
+  Deep Perceptual Audio Metric.
+</ResponseField>
+
+### Additional Metrics
+
+<ResponseField name="srmr" type="float">
+  Speech-to-Reverberation Modulation energy Ratio.
+</ResponseField>
+
+<ResponseField name="speaking_rate" type="float">
+  Speaking rate in words per minute or phonemes per second.
+</ResponseField>
+
+<ResponseField name="asvspoof_score" type="float">
+  Anti-spoofing score for deepfake detection.
+</ResponseField>
+
+<ResponseField name="nomad" type="float">
+  NOMAD (Non-Matching Audio Distance) score.
+</ResponseField>
+
+<ResponseField name="clap_score" type="float">
+  CLAP (Contrastive Language-Audio Pretraining) score.
+</ResponseField>
+
+<ResponseField name="apa" type="float">
+  Audio Prompt Adherence score.
+</ResponseField>
+
+<ResponseField name="asr_match_error_rate" type="float">
+  Error rate when matching ASR output between generated and reference audio.
+</ResponseField>
+
+<ResponseField name="log_wmse" type="float">
+  Log-weighted Mean Squared Error.
+</ResponseField>
+
+<ResponseField name="noresqa" type="float">
+  Non-intrusive Reference-free Speech Quality Assessment.
+</ResponseField>
+
+### PySepm Metrics
+
+Multiple metrics from the Python Speech Enhancement and Perception Metrics library:
+
+<ResponseField name="pysepm_fwsegsnr" type="float">
+  Frequency-weighted segmental SNR.
+</ResponseField>
+
+<ResponseField name="pysepm_wss" type="float">
+  Weighted Spectral Slope distance.
+</ResponseField>
+
+<ResponseField name="pysepm_llr" type="float">
+  Log-Likelihood Ratio.
+</ResponseField>
+
+<ResponseField name="pysepm_cd" type="float">
+  Cepstral Distance.
+</ResponseField>
+
+<ResponseField name="pysepm_c_sig" type="float">
+  Signal distortion composite measure.
+</ResponseField>
+
+<ResponseField name="pysepm_c_bak" type="float">
+  Background noise composite measure.
+</ResponseField>
+
+<ResponseField name="pysepm_c_ovl" type="float">
+  Overall quality composite measure.
+</ResponseField>
+
+<ResponseField name="pysepm_csii_high" type="float">
+  Coherence-based Speech Intelligibility Index (high frequency).
+</ResponseField>
+
+<ResponseField name="pysepm_csii_mid" type="float">
+  CSII mid frequency band.
+</ResponseField>
+
+<ResponseField name="pysepm_csii_low" type="float">
+  CSII low frequency band.
+</ResponseField>
+
+<ResponseField name="pysepm_ncm" type="float">
+  Normalized Covariance Measure.
+</ResponseField>
+
+### Audiobox Aesthetics
+
+<ResponseField name="audiobox_aesthetics_CE" type="float">
+  Clarity and Expressiveness score.
+</ResponseField>
+
+<ResponseField name="audiobox_aesthetics_CU" type="float">
+  Cleanliness and Understandability score.
+</ResponseField>
+
+<ResponseField name="audiobox_aesthetics_PC" type="float">
+  Prosody and Coherence score.
+</ResponseField>
+
+<ResponseField name="audiobox_aesthetics_PQ" type="float">
+  Perceptual Quality score.
+</ResponseField>
+
+### ARECHO Numerical Metrics
+
+ARECHO provides 60+ additional numerical metrics covering all aspects of audio quality:
+
+<ResponseField name="arecho_*" type="float">
+  ARECHO variants include: srmr, voicemos_real_mos, rt60, mcd, f0rmse, f0corr, stoi, pesq, visqol, nomad, nisqa metrics, DNS MOS scores, and all standard quality metrics.
+</ResponseField>
+
+## Usage Examples
+
+### Filtering by Metric Type
+
+```python
+from versa.metrics import STR_METRIC, NUM_METRIC
+
+def process_scores(scores):
+    """Separate numerical and string metrics."""
+    numerical_scores = {}
+    text_outputs = {}
+    
+    for key, value in scores.items():
+        if key in STR_METRIC:
+            text_outputs[key] = value
+        elif key in NUM_METRIC:
+            numerical_scores[key] = value
+    
+    return numerical_scores, text_outputs
+```
+
+### Computing Averages
+
+```python
+from versa.metrics import NUM_METRIC, STR_METRIC
+
+def compute_summary(score_list):
+    """Compute average scores across utterances."""
+    summary = {}
+    
+    # Get all metric keys from first utterance
+    for key in score_list[0].keys():
+        if key == 'key' or key in STR_METRIC:
+            continue  # Skip utterance IDs and string metrics
+        
+        # Sum scores
+        total = sum(utt[key] for utt in score_list if key in utt)
+        
+        # Average for most metrics, sum for WER/CER
+        if '_wer' in key or '_cer' in key:
+            summary[key] = total  # Total errors
+        else:
+            summary[key] = total / len(score_list)  # Average
+    
+    return summary
+```
+
+### Checking Metric Availability
+
+```python
+from versa.metrics import NUM_METRIC
+
+def validate_metric(metric_name):
+    """Check if a metric is recognized."""
+    if metric_name in NUM_METRIC:
+        return True, "numerical"
+    elif metric_name in STR_METRIC:
+        return True, "string"
+    else:
+        return False, "unknown"
+
+isValid, metricType = validate_metric("utmos")
+print(f"UTMOS is {metricType}: {isValid}")
+# Output: UTMOS is numerical: True
+```
+
+## Notes
+
+<Info>
+  The metrics module is primarily used internally by the scorer to determine how to aggregate results. String metrics are excluded from numerical summaries.
+</Info>
+
+<Warning>
+  WER and CER metrics are intentionally summed rather than averaged to compute total word/character errors across the corpus.
+</Warning>

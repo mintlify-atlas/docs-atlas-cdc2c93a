@@ -1,0 +1,345 @@
+---
+title: "Fréchet Audio Distance (FAD)"
+description: "Measure audio quality and diversity using Fréchet Audio Distance"
+---
+
+Fréchet Audio Distance (FAD) evaluates the quality and diversity of generated audio by comparing embedding distributions between baseline and evaluation datasets.
+
+## Overview
+
+FAD measures the distance between two audio distributions using the Fréchet distance in a learned embedding space. Lower FAD scores indicate better quality and diversity matching the baseline distribution.
+
+## fad_setup
+
+Initialize FAD scoring system with baseline dataset and embedding model.
+
+```python
+from versa import fad_setup
+
+fad_info = fad_setup(
+    baseline="path/to/baseline.scp",
+    fad_embedding="default",
+    cache_dir="versa_cache/fad",
+    use_inf=True,
+    io="kaldi"
+)
+```
+
+<ParamField path="baseline" type="str" required>
+  Path to baseline audio dataset. Can be a Kaldi-style SCP file or directory path depending on `io` parameter
+</ParamField>
+
+<ParamField path="fad_embedding" type="str" default="default">
+  Embedding model to use for feature extraction. See [FADTK documentation](https://github.com/microsoft/fadtk) for available models
+</ParamField>
+
+<ParamField path="cache_dir" type="str" default="versa_cache/fad">
+  Directory to cache computed embeddings for faster repeated evaluation
+</ParamField>
+
+<ParamField path="use_inf" type="bool" default="true">
+  Whether to use infinite FAD calculation (recommended for different dataset sizes)
+</ParamField>
+
+<ParamField path="io" type="str" default="kaldi">
+  Input/output format for audio files. Options: `"kaldi"` (SCP format) or other supported formats
+</ParamField>
+
+<ResponseField name="fad_info" type="dict">
+  Dictionary containing:
+  - `module`: FAD calculation module
+  - `baseline`: Baseline dataset path
+  - `cache_dir`: Cache directory path
+  - `use_inf`: Infinite FAD flag
+  - `io`: I/O format
+  - `embedding`: Embedding model name
+</ResponseField>
+
+<Note>
+Requires FADTK installation. Install using `tools/install_fadtk.sh` or follow [FADTK documentation](https://github.com/microsoft/fadtk).
+</Note>
+
+---
+
+## fad_scoring
+
+Calculate FAD score between baseline and evaluation datasets.
+
+```python
+from versa import fad_setup, fad_scoring
+
+# Setup FAD
+fad_info = fad_setup(
+    baseline="baseline_audio.scp",
+    cache_dir="versa_cache/fad"
+)
+
+# Calculate score
+result = fad_scoring(
+    pred_x="generated_audio.scp",
+    fad_info=fad_info,
+    key_info="fad"
+)
+
+print(f"FAD Score: {result['fad_overall']}")
+```
+
+<ParamField path="pred_x" type="str" required>
+  Path to evaluation/generated audio dataset (same format as baseline)
+</ParamField>
+
+<ParamField path="fad_info" type="dict" required>
+  FAD configuration dictionary from `fad_setup()`
+</ParamField>
+
+<ParamField path="key_info" type="str" default="fad">
+  Prefix for result dictionary keys
+</ParamField>
+
+<ResponseField name="return" type="dict">
+  Dictionary containing:
+  - `{key_info}_overall` (float): FAD score
+  - `{key_info}_r2` (float): R² value (only when `use_inf=True`)
+</ResponseField>
+
+---
+
+## Usage Examples
+
+<Tabs>
+  <Tab title="Basic Usage">
+    ```python
+    from versa import fad_setup, fad_scoring
+
+    # Initialize with baseline dataset
+    fad_info = fad_setup(
+        baseline="data/baseline_audio.scp",
+        fad_embedding="default",
+        cache_dir="cache/fad"
+    )
+
+    # Evaluate generated audio
+    result = fad_scoring(
+        pred_x="data/generated_audio.scp",
+        fad_info=fad_info
+    )
+
+    print(f"FAD Score: {result['fad_overall']:.4f}")
+    print(f"R² Value: {result['fad_r2']:.4f}")
+    ```
+  </Tab>
+  
+  <Tab title="Multiple Evaluations">
+    ```python
+    from versa import fad_setup, fad_scoring
+
+    # Setup once
+    fad_info = fad_setup(
+        baseline="data/baseline.scp",
+        cache_dir="cache/fad"
+    )
+
+    # Evaluate multiple models
+    models = [
+        "model_a/output.scp",
+        "model_b/output.scp",
+        "model_c/output.scp"
+    ]
+
+    results = {}
+    for i, model_path in enumerate(models):
+        score = fad_scoring(
+            pred_x=model_path,
+            fad_info=fad_info,
+            key_info=f"model_{i}"
+        )
+        results[f"model_{i}"] = score[f"model_{i}_overall"]
+
+    # Find best model
+    best_model = min(results, key=results.get)
+    print(f"Best model: {best_model} (FAD: {results[best_model]:.4f})")
+    ```
+  </Tab>
+  
+  <Tab title="Custom Embedding">
+    ```python
+    from versa import fad_setup, fad_scoring
+
+    # Use specific embedding model
+    fad_info = fad_setup(
+        baseline="data/baseline.scp",
+        fad_embedding="vggish",  # or other FADTK models
+        cache_dir="cache/fad_vggish",
+        use_inf=True
+    )
+
+    result = fad_scoring(
+        pred_x="data/generated.scp",
+        fad_info=fad_info,
+        key_info="vggish_fad"
+    )
+
+    print(f"VGGish FAD: {result['vggish_fad_overall']:.4f}")
+    ```
+  </Tab>
+  
+  <Tab title="With Kaldi Files">
+    ```python
+    from versa import fad_setup, fad_scoring
+
+    # Baseline SCP file format:
+    # utterance_id_1 /path/to/audio1.wav
+    # utterance_id_2 /path/to/audio2.wav
+
+    fad_info = fad_setup(
+        baseline="data/baseline.scp",
+        io="kaldi",
+        cache_dir="cache/fad"
+    )
+
+    # Evaluation SCP file (same format)
+    result = fad_scoring(
+        pred_x="data/eval.scp",
+        fad_info=fad_info
+    )
+
+    print(f"FAD: {result['fad_overall']:.4f}")
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Understanding FAD Scores
+
+<AccordionGroup>
+  <Accordion title="What is a good FAD score?">
+    - **Lower is better**: FAD measures distribution distance
+    - **FAD = 0**: Perfect match (identical distributions)
+    - **FAD < 1**: Excellent quality and diversity
+    - **FAD 1-5**: Good quality
+    - **FAD > 10**: Significant distribution mismatch
+    
+    Scores depend on the domain and baseline dataset.
+  </Accordion>
+  
+  <Accordion title="Infinite FAD vs Standard FAD">
+    - **Infinite FAD** (`use_inf=True`): Recommended when baseline and evaluation have different sizes. Provides more stable estimates.
+    - **Standard FAD** (`use_inf=False`): Requires equal-sized datasets. Faster but less robust.
+    
+    The function automatically uses infinite FAD when dataset sizes differ.
+  </Accordion>
+  
+  <Accordion title="Embedding Models">
+    FAD uses pre-trained models to extract audio features:
+    - Different models may give different absolute scores
+    - Use the same embedding model for fair comparison
+    - See [FADTK models](https://github.com/microsoft/fadtk) for options
+  </Accordion>
+  
+  <Accordion title="Caching for Performance">
+    Embeddings are cached to disk:
+    - First run: Computes and caches embeddings for both datasets
+    - Subsequent runs: Loads cached embeddings (much faster)
+    - Cache structure:
+      - `{cache_dir}/baseline/`: Baseline embeddings
+      - `{cache_dir}/eval/`: Evaluation embeddings
+    
+    Delete cache directory to recompute embeddings.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## File Format
+
+### Kaldi SCP Format
+
+When using `io="kaldi"`, provide SCP (script) files:
+
+```text
+utt001 /path/to/audio001.wav
+utt002 /path/to/audio002.wav
+utt003 /path/to/audio003.wav
+```
+
+Each line contains:
+- **Utterance ID**: Unique identifier
+- **File Path**: Absolute or relative path to audio file
+
+---
+
+## Technical Details
+
+<CodeGroup>
+  ```python versa/corpus_metrics/fad.py:27-51
+  def fad_setup(
+      baseline,
+      fad_embedding="default",
+      cache_dir="versa_cache/fad",
+      use_inf=True,
+      io="kaldi",
+  ):
+      if get_model is None or FrechetAudioDistance is None:
+          raise ModuleNotFoundError(
+              "FADTK is not installed. Please install it following `tools/install_fadtk.sh`"
+          )
+      # get model
+      model = get_model(fad_embedding)
+
+      # setup fad object
+      fad = FrechetAudioDistance(ml=model, load_model=True)
+
+      return {
+          "module": fad,
+          "baseline": baseline,
+          "cache_dir": cache_dir,
+          "use_inf": use_inf,
+          "io": io,
+          "embedding": fad_embedding,
+      }
+  ```
+
+  ```python versa/corpus_metrics/fad.py:54-90
+  def fad_scoring(pred_x, fad_info, key_info="fad"):
+
+      cache_dir = fad_info["cache_dir"]
+
+      # 1. Calculate embedding files for each dataset
+      logging.info("[FAD] caching baseline embeddings...")
+      baseline_files = audio_loader_setup(fad_info["baseline"], fad_info["io"])
+      for key in tqdm(baseline_files.keys()):
+          fad_info["module"].cache_embedding_file(
+              key, baseline_files[key], cache_dir + "/baseline"
+          )
+      logging.info("[FAD] Finished caching baseline embeddings.")
+
+      logging.info("[FAD] caching eval embeddings...")
+      eval_files = audio_loader_setup(pred_x, fad_info["io"])
+      for key in tqdm(eval_files.keys()):
+          fad_info["module"].cache_embedding_file(
+              key, eval_files[key], cache_dir + "/eval"
+          )
+      logging.info("[FAD] Finished caching eval embeddings.")
+
+      if len(baseline_files) != len(eval_files):
+          use_inf = True
+      else:
+          use_inf = fad_info["use_inf"]
+
+      # 2. Calculate FAD
+      if use_inf:
+          score = fad_info["module"].score_inf(baseline_files, eval_files, cache_dir)
+          return {
+              "{}_overall".format(key_info): score.score,
+              "{}_r2".format(key_info): score.r2,
+          }
+      else:
+          score = fad_info["module"].score(baseline_files, eval_files, cache_dir)
+          return {"{}_overall".format(key_info): score}
+  ```
+</CodeGroup>
+
+<Warning>
+FAD calculation requires significant computational resources for large datasets. Use caching to avoid recomputing embeddings.
+</Warning>

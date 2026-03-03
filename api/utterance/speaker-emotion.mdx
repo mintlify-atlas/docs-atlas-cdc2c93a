@@ -1,0 +1,281 @@
+---
+title: Speaker & Emotion
+description: Speaker similarity and emotion similarity metrics using embeddings
+---
+
+These metrics measure similarity between audio samples using deep learning embeddings for speaker verification and emotion recognition.
+
+## Speaker Similarity
+
+### Model Setup
+
+<CodeGroup>
+```python Function Signature
+speaker_model_setup(
+    model_tag="default",
+    model_path=None,
+    model_config=None,
+    use_gpu=False
+)
+```
+</CodeGroup>
+
+#### Parameters
+
+<ParamField path="model_tag" type="str" default="default">
+  Model identifier. Options:
+  - `"default"` or `"espnet/voxcelebs12_rawnet3"` - RawNet3 trained on VoxCeleb
+  - Any ESPnet speaker model tag
+</ParamField>
+
+<ParamField path="model_path" type="str">
+  Path to custom model file. If provided, `model_config` must also be specified
+</ParamField>
+
+<ParamField path="model_config" type="str">
+  Path to model configuration file (required if using `model_path`)
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="false">
+  Whether to use GPU for inference
+</ParamField>
+
+#### Returns
+
+<ResponseField name="model" type="Speech2Embedding">
+  ESPnet speaker embedding model
+</ResponseField>
+
+### Metric Calculation
+
+<CodeGroup>
+```python Function Signature
+speaker_metric(
+    model,
+    pred_x,
+    gt_x,
+    fs
+)
+```
+</CodeGroup>
+
+#### Parameters
+
+<ParamField path="model" type="Speech2Embedding" required>
+  Speaker model from `speaker_model_setup()`
+</ParamField>
+
+<ParamField path="pred_x" type="numpy.ndarray" required>
+  Predicted audio signal (1D array)
+</ParamField>
+
+<ParamField path="gt_x" type="numpy.ndarray" required>
+  Reference audio signal (1D array)
+</ParamField>
+
+<ParamField path="fs" type="int" required>
+  Sampling rate in Hz. Audio is resampled to 16 kHz if needed
+</ParamField>
+
+#### Returns
+
+<ResponseField name="spk_similarity" type="float">
+  Cosine similarity between speaker embeddings, ranging from -1 to 1 (higher is better)
+  - Values close to 1: Same speaker
+  - Values close to 0: Unrelated speakers
+  - Values close to -1: Opposite characteristics (rare)
+</ResponseField>
+
+### Usage Example
+
+```python
+import numpy as np
+from versa import speaker_model_setup, speaker_metric
+
+# Setup speaker model
+model = speaker_model_setup(
+    model_tag="espnet/voxcelebs12_rawnet3",
+    use_gpu=True
+)
+
+# Load audio signals
+reference_audio = np.random.random(16000)  # Replace with actual audio
+test_audio = np.random.random(16000)       # Replace with actual audio
+fs = 16000
+
+# Calculate speaker similarity
+result = speaker_metric(
+    model=model,
+    pred_x=test_audio,
+    gt_x=reference_audio,
+    fs=fs
+)
+
+print(f"Speaker Similarity: {result['spk_similarity']:.3f}")
+```
+
+## Emotion Similarity
+
+### Model Setup
+
+<CodeGroup>
+```python Function Signature
+emo2vec_setup(
+    model_tag="default",
+    model_path=None,
+    use_gpu=False
+)
+```
+</CodeGroup>
+
+#### Parameters
+
+<ParamField path="model_tag" type="str" default="default">
+  Model identifier. Options:
+  - `"default"` or `"base"` - emotion2vec base model
+</ParamField>
+
+<ParamField path="model_path" type="str">
+  Path to custom model checkpoint. Overrides `model_tag` if provided
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="false">
+  Whether to use GPU for inference
+</ParamField>
+
+#### Returns
+
+<ResponseField name="model" type="EMO2VEC">
+  emotion2vec model for emotion embedding extraction
+</ResponseField>
+
+#### Raises
+
+- `ImportError`: If emo2vec_versa is not installed
+- `ValueError`: If model_tag is unknown
+- `FileNotFoundError`: If model file is not found
+
+### Metric Calculation
+
+<CodeGroup>
+```python Function Signature
+emo_sim(
+    model,
+    pred_x,
+    gt_x,
+    fs
+)
+```
+</CodeGroup>
+
+#### Parameters
+
+<ParamField path="model" type="EMO2VEC" required>
+  Emotion model from `emo2vec_setup()`
+</ParamField>
+
+<ParamField path="pred_x" type="numpy.ndarray" required>
+  Predicted audio signal (1D array)
+</ParamField>
+
+<ParamField path="gt_x" type="numpy.ndarray" required>
+  Reference audio signal (1D array)
+</ParamField>
+
+<ParamField path="fs" type="int" required>
+  Sampling rate in Hz. Audio is resampled to 16 kHz if needed
+</ParamField>
+
+#### Returns
+
+<ResponseField name="emotion_similarity" type="float">
+  Cosine similarity between emotion embeddings, ranging from -1 to 1 (higher is better)
+  - Values close to 1: Similar emotional content
+  - Values close to 0: Unrelated emotions
+</ResponseField>
+
+### Usage Example
+
+```python
+import numpy as np
+from versa import emo2vec_setup, emo_sim
+
+# Setup emotion model
+model = emo2vec_setup(
+    model_tag="default",
+    use_gpu=True
+)
+
+# Load audio signals
+reference_audio = np.random.random(16000)  # Replace with actual audio
+test_audio = np.random.random(16000)       # Replace with actual audio
+fs = 16000
+
+# Calculate emotion similarity
+result = emo_sim(
+    model=model,
+    pred_x=test_audio,
+    gt_x=reference_audio,
+    fs=fs
+)
+
+print(f"Emotion Similarity: {result['emotion_similarity']:.3f}")
+```
+
+## Installation
+
+<CodeGroup>
+```bash Speaker (ESPnet)
+pip install espnet
+```
+
+```bash Emotion (emo2vec)
+# Use the installation script
+bash tools/install_emo2vec.sh
+```
+</CodeGroup>
+
+## Technical Details
+
+<Note>
+  **Sampling Rate**: Both metrics require 16 kHz audio. Automatic resampling is performed if needed.
+</Note>
+
+<Note>
+  **Embedding Method**: Both use cosine similarity of L2-normalized embeddings for comparison.
+</Note>
+
+## Use Cases
+
+### Speaker Similarity
+- Voice conversion quality assessment
+- Speaker verification systems
+- Voice cloning evaluation
+- Multi-speaker TTS validation
+
+### Emotion Similarity
+- Emotional TTS evaluation
+- Affective computing validation
+- Speech emotion transfer quality
+- Expressive voice synthesis assessment
+
+## Model Details
+
+| Metric | Model | Sampling Rate | Embedding Dim |
+|--------|-------|---------------|---------------|
+| Speaker | RawNet3 (VoxCeleb) | 16 kHz | Varies |
+| Emotion | emotion2vec base | 16 kHz | Varies |
+
+## Interpretation Guidelines
+
+### Speaker Similarity
+- **> 0.8**: Very likely same speaker
+- **0.5 - 0.8**: Possibly same speaker or very similar voice
+- **0.3 - 0.5**: Different speakers with some similarities
+- **< 0.3**: Clearly different speakers
+
+### Emotion Similarity
+- **> 0.7**: Very similar emotional expression
+- **0.4 - 0.7**: Related emotions
+- **0.2 - 0.4**: Somewhat different emotions
+- **< 0.2**: Very different emotional content

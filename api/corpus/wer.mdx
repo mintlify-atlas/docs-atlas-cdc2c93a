@@ -1,0 +1,427 @@
+---
+title: "Word Error Rate (WER)"
+description: "Calculate WER and CER using ESPnet, OWSM, or Whisper ASR models"
+---
+
+Word Error Rate (WER) metrics evaluate speech recognition quality by comparing transcribed text against reference transcripts using Levenshtein distance.
+
+## ESPnet WER
+
+### espnet_wer_setup
+
+Initialize ESPnet ASR model for WER calculation.
+
+```python
+from versa import espnet_wer_setup
+
+wer_utils = espnet_wer_setup(
+    model_tag="default",
+    beam_size=5,
+    text_cleaner="whisper_basic",
+    use_gpu=True
+)
+```
+
+<ParamField path="model_tag" type="str" default="default">
+  ESPnet model identifier. Default uses `espnet/simpleoier_librispeech_asr_train_asr_conformer7_wavlm_large_raw_en_bpe5000_sp`
+</ParamField>
+
+<ParamField path="beam_size" type="int" default="5">
+  Beam size for beam search decoding
+</ParamField>
+
+<ParamField path="text_cleaner" type="str" default="whisper_basic">
+  Text cleaning method to normalize transcripts
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="true">
+  Whether to use GPU acceleration
+</ParamField>
+
+<ResponseField name="wer_utils" type="dict">
+  Dictionary containing model, text cleaner, and beam size for WER calculation
+</ResponseField>
+
+### espnet_levenshtein_metric
+
+Calculate WER and CER between reference and predicted transcripts.
+
+```python
+from versa import espnet_levenshtein_metric
+import numpy as np
+
+# Setup model
+wer_utils = espnet_wer_setup()
+
+# Calculate metrics
+audio = np.random.random(16000)  # 1 second audio at 16kHz
+result = espnet_levenshtein_metric(
+    wer_utils=wer_utils,
+    pred_x=audio,
+    ref_text="test a sentence.",
+    fs=16000
+)
+```
+
+<ParamField path="wer_utils" type="dict" required>
+  Utility dictionary from `espnet_wer_setup()` containing model and configuration
+</ParamField>
+
+<ParamField path="pred_x" type="np.ndarray" required>
+  Audio signal array with shape `(time,)`
+</ParamField>
+
+<ParamField path="ref_text" type="str" required>
+  Reference transcript text
+</ParamField>
+
+<ParamField path="fs" type="int" default="16000">
+  Sampling rate in Hz (automatically resampled to 16kHz if different)
+</ParamField>
+
+<ResponseField name="return" type="dict">
+  Dictionary containing:
+  - `espnet_hyp_text` (str): Predicted transcript
+  - `ref_text` (str): Cleaned reference text
+  - `espnet_wer_delete` (int): Number of deletions (WER)
+  - `espnet_wer_insert` (int): Number of insertions (WER)
+  - `espnet_wer_replace` (int): Number of substitutions (WER)
+  - `espnet_wer_equal` (int): Number of correct words (WER)
+  - `espnet_cer_delete` (int): Number of deletions (CER)
+  - `espnet_cer_insert` (int): Number of insertions (CER)
+  - `espnet_cer_replace` (int): Number of substitutions (CER)
+  - `espnet_cer_equal` (int): Number of correct characters (CER)
+</ResponseField>
+
+---
+
+## OWSM WER
+
+### owsm_wer_setup
+
+Initialize OWSM (Open Whisper-style Speech Model) for multilingual WER calculation.
+
+```python
+from versa import owsm_wer_setup
+
+wer_utils = owsm_wer_setup(
+    model_tag="default",
+    beam_size=5,
+    text_cleaner="whisper_basic",
+    use_gpu=True
+)
+```
+
+<ParamField path="model_tag" type="str" default="default">
+  OWSM model identifier. Default uses `espnet/owsm_v3.1_ebf`
+</ParamField>
+
+<ParamField path="beam_size" type="int" default="5">
+  Beam size for beam search decoding
+</ParamField>
+
+<ParamField path="text_cleaner" type="str" default="whisper_basic">
+  Text cleaning method to normalize transcripts
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="true">
+  Whether to use GPU acceleration
+</ParamField>
+
+<ResponseField name="wer_utils" type="dict">
+  Dictionary containing model, text cleaner, and beam size for WER calculation
+</ResponseField>
+
+### owsm_levenshtein_metric
+
+Calculate WER and CER using OWSM model with automatic language detection and long-form support.
+
+```python
+from versa import owsm_levenshtein_metric
+import numpy as np
+
+# Setup model
+wer_utils = owsm_wer_setup()
+
+# Calculate metrics (supports audio > 30s)
+audio = np.random.random(16000 * 60)  # 60 seconds audio
+result = owsm_levenshtein_metric(
+    wer_utils=wer_utils,
+    pred_x=audio,
+    ref_text="This is a long audio transcript.",
+    fs=16000
+)
+```
+
+<ParamField path="wer_utils" type="dict" required>
+  Utility dictionary from `owsm_wer_setup()` containing model and configuration
+</ParamField>
+
+<ParamField path="pred_x" type="np.ndarray" required>
+  Audio signal array with shape `(time,)`. Supports long-form audio > 30 seconds
+</ParamField>
+
+<ParamField path="ref_text" type="str" required>
+  Reference transcript text
+</ParamField>
+
+<ParamField path="fs" type="int" default="16000">
+  Sampling rate in Hz (automatically resampled to 16kHz if different)
+</ParamField>
+
+<ResponseField name="return" type="dict">
+  Dictionary containing:
+  - `owsm_hyp_text` (str): Predicted transcript
+  - `ref_text` (str): Cleaned reference text
+  - `owsm_wer_delete` (int): Number of deletions (WER)
+  - `owsm_wer_insert` (int): Number of insertions (WER)
+  - `owsm_wer_replace` (int): Number of substitutions (WER)
+  - `owsm_wer_equal` (int): Number of correct words (WER)
+  - `owsm_cer_delete` (int): Number of deletions (CER)
+  - `owsm_cer_insert` (int): Number of insertions (CER)
+  - `owsm_cer_replace` (int): Number of substitutions (CER)
+  - `owsm_cer_equal` (int): Number of correct characters (CER)
+</ResponseField>
+
+<Note>
+OWSM automatically detects the language from the first 30 seconds and supports long-form decoding for audio longer than 30 seconds.
+</Note>
+
+---
+
+## Whisper WER
+
+### whisper_wer_setup
+
+Initialize OpenAI Whisper model for WER calculation.
+
+```python
+from versa import whisper_wer_setup
+
+wer_utils = whisper_wer_setup(
+    model_tag="default",
+    beam_size=5,
+    text_cleaner="whisper_basic",
+    use_gpu=True
+)
+```
+
+<ParamField path="model_tag" type="str" default="default">
+  Whisper model size. Default is `"large"`. Options: `tiny`, `base`, `small`, `medium`, `large`
+</ParamField>
+
+<ParamField path="beam_size" type="int" default="5">
+  Beam size for beam search decoding
+</ParamField>
+
+<ParamField path="text_cleaner" type="str" default="whisper_basic">
+  Text cleaning method to normalize transcripts
+</ParamField>
+
+<ParamField path="use_gpu" type="bool" default="true">
+  Whether to use GPU acceleration
+</ParamField>
+
+<ResponseField name="wer_utils" type="dict">
+  Dictionary containing model, text cleaner, and beam size for WER calculation
+</ResponseField>
+
+### whisper_levenshtein_metric
+
+Calculate WER and CER using Whisper model with optional transcript caching.
+
+```python
+from versa import whisper_levenshtein_metric
+import numpy as np
+
+# Setup model
+wer_utils = whisper_wer_setup()
+
+# Calculate metrics
+audio = np.random.random(16000)  # 1 second audio at 16kHz
+result = whisper_levenshtein_metric(
+    wer_utils=wer_utils,
+    pred_x=audio,
+    ref_text="test a sentence.",
+    fs=16000
+)
+
+# Or use cached transcription
+result = whisper_levenshtein_metric(
+    wer_utils=wer_utils,
+    pred_x=audio,
+    ref_text="test a sentence.",
+    fs=16000,
+    cache_pred_text="cached transcription text"
+)
+```
+
+<ParamField path="wer_utils" type="dict" required>
+  Utility dictionary from `whisper_wer_setup()` containing model and configuration
+</ParamField>
+
+<ParamField path="pred_x" type="np.ndarray" required>
+  Audio signal array with shape `(time,)`
+</ParamField>
+
+<ParamField path="ref_text" type="str" required>
+  Reference transcript text
+</ParamField>
+
+<ParamField path="fs" type="int" default="16000">
+  Sampling rate in Hz (automatically resampled to 16kHz if different)
+</ParamField>
+
+<ParamField path="cache_pred_text" type="str" default="None">
+  Pre-computed transcription to skip ASR inference. Useful when transcription is already available
+</ParamField>
+
+<ResponseField name="return" type="dict">
+  Dictionary containing:
+  - `whisper_hyp_text` (str): Predicted transcript
+  - `ref_text` (str): Cleaned reference text
+  - `whisper_wer_delete` (int): Number of deletions (WER)
+  - `whisper_wer_insert` (int): Number of insertions (WER)
+  - `whisper_wer_replace` (int): Number of substitutions (WER)
+  - `whisper_wer_equal` (int): Number of correct words (WER)
+  - `whisper_cer_delete` (int): Number of deletions (CER)
+  - `whisper_cer_insert` (int): Number of insertions (CER)
+  - `whisper_cer_replace` (int): Number of substitutions (CER)
+  - `whisper_cer_equal` (int): Number of correct characters (CER)
+</ResponseField>
+
+---
+
+## Calculating WER Score
+
+<Tabs>
+  <Tab title="ESPnet">
+    ```python
+    from versa import espnet_wer_setup, espnet_levenshtein_metric
+    import librosa
+
+    # Setup
+    wer_utils = espnet_wer_setup(model_tag="default")
+
+    # Load audio
+    audio, sr = librosa.load("speech.wav", sr=None)
+
+    # Calculate metrics
+    result = espnet_levenshtein_metric(
+        wer_utils=wer_utils,
+        pred_x=audio,
+        ref_text="The quick brown fox jumps over the lazy dog.",
+        fs=sr
+    )
+
+    # Calculate WER percentage
+    total_words = (
+        result["espnet_wer_delete"] + 
+        result["espnet_wer_replace"] + 
+        result["espnet_wer_equal"]
+    )
+    wer_score = (
+        result["espnet_wer_delete"] + 
+        result["espnet_wer_insert"] + 
+        result["espnet_wer_replace"]
+    ) / total_words * 100
+
+    print(f"WER: {wer_score:.2f}%")
+    print(f"Hypothesis: {result['espnet_hyp_text']}")
+    ```
+  </Tab>
+  
+  <Tab title="OWSM">
+    ```python
+    from versa import owsm_wer_setup, owsm_levenshtein_metric
+    import librosa
+
+    # Setup
+    wer_utils = owsm_wer_setup()
+
+    # Load long audio file
+    audio, sr = librosa.load("long_speech.wav", sr=None)
+
+    # Calculate metrics (supports long-form)
+    result = owsm_levenshtein_metric(
+        wer_utils=wer_utils,
+        pred_x=audio,
+        ref_text="Long form transcript text...",
+        fs=sr
+    )
+
+    # Calculate WER percentage
+    total_words = (
+        result["owsm_wer_delete"] + 
+        result["owsm_wer_replace"] + 
+        result["owsm_wer_equal"]
+    )
+    wer_score = (
+        result["owsm_wer_delete"] + 
+        result["owsm_wer_insert"] + 
+        result["owsm_wer_replace"]
+    ) / total_words * 100
+
+    print(f"WER: {wer_score:.2f}%")
+    ```
+  </Tab>
+  
+  <Tab title="Whisper">
+    ```python
+    from versa import whisper_wer_setup, whisper_levenshtein_metric
+    import librosa
+
+    # Setup
+    wer_utils = whisper_wer_setup(model_tag="large")
+
+    # Load audio
+    audio, sr = librosa.load("speech.wav", sr=None)
+
+    # Calculate metrics
+    result = whisper_levenshtein_metric(
+        wer_utils=wer_utils,
+        pred_x=audio,
+        ref_text="The quick brown fox jumps over the lazy dog.",
+        fs=sr
+    )
+
+    # Calculate WER percentage
+    total_words = (
+        result["whisper_wer_delete"] + 
+        result["whisper_wer_replace"] + 
+        result["whisper_wer_equal"]
+    )
+    wer_score = (
+        result["whisper_wer_delete"] + 
+        result["whisper_wer_insert"] + 
+        result["whisper_wer_replace"]
+    ) / total_words * 100
+
+    print(f"WER: {wer_score:.2f}%")
+    print(f"Hypothesis: {result['whisper_hyp_text']}")
+    ```
+  </Tab>
+</Tabs>
+
+## Understanding Edit Operations
+
+The Levenshtein distance metrics track four types of operations:
+
+- **Delete**: Words in reference but missing in hypothesis
+- **Insert**: Extra words in hypothesis not in reference
+- **Replace**: Words substituted between reference and hypothesis
+- **Equal**: Correctly matched words
+
+**WER Formula:**
+```
+WER = (Deletions + Insertions + Substitutions) / Total Reference Words
+```
+
+**CER Formula:**
+```
+CER = (Deletions + Insertions + Substitutions) / Total Reference Characters
+```
+
+<Note>
+All models automatically resample audio to 16kHz if a different sampling rate is provided.
+</Note>

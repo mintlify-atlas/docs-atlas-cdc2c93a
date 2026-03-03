@@ -1,0 +1,552 @@
+---
+title: Python API
+description: Use VERSA programmatically in your Python code
+---
+
+VERSA can be used directly in Python scripts and notebooks for flexible, programmatic evaluation. This guide covers the Python API with real examples from the source code.
+
+## Installation
+
+First, ensure VERSA is installed:
+
+```bash
+pip install git+https://github.com/wavlab-speech/versa.git
+```
+
+## Core Imports
+
+VERSA exposes various metric functions through its main module:
+
+```python
+import versa
+
+# Signal and sequence metrics
+from versa import mcd_f0, signal_metric
+
+# Utterance-level metrics
+from versa import pesq_metric, stoi_metric, estoi_metric
+from versa import pseudo_mos_metric, pseudo_mos_setup
+from versa import speaker_metric, speaker_model_setup
+from versa import singer_metric, singer_model_setup
+from versa import visqol_metric, visqol_setup
+
+# Neural quality metrics
+from versa import noresqa_metric, noresqa_model_setup
+from versa import squim_metric, squim_metric_no_ref
+from versa import wvmos_setup, wvmos_calculate
+from versa import sigmos_setup, sigmos_calculate
+from versa import nomad, nomad_setup
+
+# Corpus-level metrics
+from versa import espnet_levenshtein_metric, espnet_wer_setup
+from versa import whisper_levenshtein_metric, whisper_wer_setup
+from versa import owsm_levenshtein_metric, owsm_wer_setup
+from versa import fad_scoring, fad_setup
+
+# Matching and profiling metrics
+from versa import asr_match_metric, asr_match_setup
+from versa import language_id, owsm_lid_model_setup
+from versa import emo_sim, emo2vec_setup
+from versa import pysepm_metric
+from versa import srmr_metric
+from versa import chroma_metric
+```
+
+## Available API Functions
+
+### Sequence Metrics
+
+<CodeGroup>
+
+```python MCD & F0
+from versa import mcd_f0
+
+# Compute MCD, F0 correlation, and F0 RMSE
+results = mcd_f0(
+    pred_audio,      # Predicted audio array
+    gt_audio,        # Ground truth audio array
+    sr=16000,        # Sample rate
+    f0min=40,        # Minimum F0
+    f0max=800,       # Maximum F0
+    mcep_dim=39,     # MCEP dimension
+    mcep_alpha=0.466 # MCEP alpha
+)
+print(f"MCD: {results['mcd']:.2f}")
+print(f"F0 Correlation: {results['f0_corr']:.3f}")
+print(f"F0 RMSE: {results['f0_rmse']:.2f}")
+```
+
+```python Signal Metrics
+from versa import signal_metric
+
+# Compute SDR, SIR, SAR, SI-SNR, CI-SDR
+results = signal_metric(
+    pred_audio,  # Predicted audio
+    gt_audio     # Ground truth audio
+)
+print(f"SDR: {results['sdr']:.2f} dB")
+print(f"SI-SNR: {results['si-snr']:.2f} dB")
+print(f"CI-SDR: {results['ci-sdr']:.2f} dB")
+```
+
+</CodeGroup>
+
+### Utterance-Level Metrics
+
+<CodeGroup>
+
+```python PESQ
+from versa import pesq_metric
+import soundfile as sf
+
+# Load audio files
+pred, sr = sf.read('predicted.wav')
+ref, sr = sf.read('reference.wav')
+
+# Compute PESQ
+pesq_score = pesq_metric(pred, ref, sr)
+print(f"PESQ Score: {pesq_score:.3f}")
+```
+
+```python STOI
+from versa import stoi_metric, estoi_metric
+import soundfile as sf
+
+pred, sr = sf.read('predicted.wav')
+ref, sr = sf.read('reference.wav')
+
+# Compute STOI
+stoi_score = stoi_metric(pred, ref, sr)
+print(f"STOI: {stoi_score:.3f}")
+
+# Compute extended STOI
+estoi_score = estoi_metric(pred, ref, sr)
+print(f"ESTOI: {estoi_score:.3f}")
+```
+
+```python MOS Predictors
+from versa import pseudo_mos_metric, pseudo_mos_setup
+import soundfile as sf
+
+# Setup MOS predictors
+predictor_config = {
+    'predictor_types': ['utmos', 'dnsmos', 'plcmos'],
+    'predictor_args': {
+        'utmos': {'fs': 16000},
+        'dnsmos': {'fs': 16000},
+        'plcmos': {'fs': 16000}
+    }
+}
+
+models = pseudo_mos_setup(
+    predictor_config,
+    use_gpu=True
+)
+
+# Evaluate audio
+audio, sr = sf.read('audio.wav')
+scores = pseudo_mos_metric(audio, sr, models)
+
+print(f"UTMOS: {scores['utmos']:.3f}")
+print(f"DNSMOS: {scores['dnsmos']:.3f}")
+print(f"PLCMOS: {scores['plcmos']:.3f}")
+```
+
+```python Speaker Similarity
+from versa import speaker_metric, speaker_model_setup
+import soundfile as sf
+
+# Setup speaker model
+model = speaker_model_setup(
+    model_tag='espnet/voxcelebs12_ecapa',
+    use_gpu=True
+)
+
+# Load audio
+pred, _ = sf.read('predicted.wav')
+ref, _ = sf.read('reference.wav')
+
+# Compute similarity
+similarity = speaker_metric(pred, ref, model)
+print(f"Speaker Similarity: {similarity:.3f}")
+```
+
+</CodeGroup>
+
+### No-Reference Quality Metrics
+
+<CodeGroup>
+
+```python SQUIM (No-Ref)
+from versa import squim_metric_no_ref
+import soundfile as sf
+
+audio, sr = sf.read('audio.wav')
+
+# Compute reference-less quality metrics
+scores = squim_metric_no_ref(audio, sr)
+
+print(f"MOS: {scores['mos']:.3f}")
+print(f"PESQ (estimated): {scores['pesq']:.3f}")
+print(f"STOI (estimated): {scores['stoi']:.3f}")
+print(f"SI-SDR (estimated): {scores['si_sdr']:.2f} dB")
+```
+
+```python NoResQA
+from versa import noresqa_metric, noresqa_model_setup
+import soundfile as sf
+
+# Setup NoResQA model
+model = noresqa_model_setup(use_gpu=True)
+
+# Evaluate audio
+audio, sr = sf.read('audio.wav')
+quality_score = noresqa_metric(audio, sr, model)
+
+print(f"NoResQA Score: {quality_score:.3f}")
+```
+
+```python NOMAD
+from versa import nomad, nomad_setup
+import soundfile as sf
+
+# Setup NOMAD (deepfake detection)
+model = nomad_setup(use_gpu=True)
+
+audio, sr = sf.read('audio.wav')
+score = nomad(audio, sr, model)
+
+print(f"NOMAD Score: {score:.3f}")
+print("Higher scores = more likely genuine")
+```
+
+</CodeGroup>
+
+### Corpus-Level Metrics
+
+<CodeGroup>
+
+```python WER with Whisper
+from versa import whisper_levenshtein_metric, whisper_wer_setup
+
+# Setup Whisper ASR
+model = whisper_wer_setup(
+    model_name='large-v2',
+    use_gpu=True,
+    language='en'
+)
+
+# Compute WER on audio files
+results = whisper_levenshtein_metric(
+    pred_audio_list,
+    reference_texts,
+    model
+)
+
+print(f"WER: {results['wer']:.2%}")
+print(f"CER: {results['cer']:.2%}")
+```
+
+```python WER with ESPnet
+from versa import espnet_levenshtein_metric, espnet_wer_setup
+
+# Setup ESPnet ASR
+model = espnet_wer_setup(
+    model_tag='espnet/librispeech_asr',
+    use_gpu=True
+)
+
+# Evaluate
+results = espnet_levenshtein_metric(
+    pred_audio_list,
+    reference_texts,
+    model
+)
+
+print(f"WER: {results['espnet_wer']:.2%}")
+print(f"CER: {results['espnet_cer']:.2%}")
+```
+
+```python FAD
+from versa import fad_scoring, fad_setup
+
+# Setup FAD model
+model = fad_setup(
+    model_name='vggish',
+    use_gpu=True
+)
+
+# Compute FAD between two datasets
+fad_score = fad_scoring(
+    pred_audio_dir='generated/',
+    ref_audio_dir='reference/',
+    model=model
+)
+
+print(f"FAD Score: {fad_score:.2f}")
+```
+
+</CodeGroup>
+
+### Advanced Profiling Metrics
+
+<CodeGroup>
+
+```python Qwen2-Audio
+from versa import (
+    qwen2_model_setup,
+    qwen2_speech_emotion_metric,
+    qwen2_speaker_gender_metric,
+    qwen2_recording_quality_metric
+)
+import soundfile as sf
+
+# Setup Qwen2-Audio
+model = qwen2_model_setup(use_gpu=True)
+
+audio, sr = sf.read('audio.wav')
+
+# Profile various attributes
+emotion = qwen2_speech_emotion_metric(audio, sr, model)
+gender = qwen2_speaker_gender_metric(audio, sr, model)
+quality = qwen2_recording_quality_metric(audio, sr, model)
+
+print(f"Emotion: {emotion}")
+print(f"Gender: {gender}")
+print(f"Quality: {quality}")
+```
+
+```python Language ID
+from versa import language_id, owsm_lid_model_setup
+import soundfile as sf
+
+# Setup language identification
+model = owsm_lid_model_setup(use_gpu=True)
+
+audio, sr = sf.read('multilingual.wav')
+lang = language_id(audio, sr, model)
+
+print(f"Detected Language: {lang}")
+```
+
+```python Emotion Similarity
+from versa import emo_sim, emo2vec_setup
+import soundfile as sf
+
+# Setup emotion model
+model = emo2vec_setup(use_gpu=True)
+
+pred, _ = sf.read('predicted.wav')
+ref, _ = sf.read('reference.wav')
+
+# Compute emotion similarity
+sim = emo_sim(pred, ref, model)
+print(f"Emotion Similarity: {sim:.3f}")
+```
+
+</CodeGroup>
+
+## Complete Example
+
+Here's a complete example evaluating multiple metrics:
+
+```python
+import soundfile as sf
+from versa import (
+    pesq_metric,
+    stoi_metric,
+    signal_metric,
+    mcd_f0,
+    pseudo_mos_setup,
+    pseudo_mos_metric,
+    speaker_model_setup,
+    speaker_metric
+)
+
+# Load audio files
+pred_audio, sr = sf.read('predicted.wav')
+ref_audio, sr = sf.read('reference.wav')
+
+print("=" * 60)
+print("VERSA Audio Evaluation")
+print("=" * 60)
+
+# 1. Objective metrics
+print("\n[Objective Metrics]")
+pesq = pesq_metric(pred_audio, ref_audio, sr)
+stoi = stoi_metric(pred_audio, ref_audio, sr)
+print(f"PESQ: {pesq:.3f}")
+print(f"STOI: {stoi:.3f}")
+
+# 2. Signal metrics
+print("\n[Signal Metrics]")
+sig_results = signal_metric(pred_audio, ref_audio)
+for metric, value in sig_results.items():
+    print(f"{metric.upper()}: {value:.2f} dB")
+
+# 3. MCD and F0
+print("\n[Spectral Metrics]")
+mcd_results = mcd_f0(
+    pred_audio, ref_audio, sr,
+    f0min=40, f0max=800,
+    mcep_dim=39, mcep_alpha=0.466
+)
+print(f"MCD: {mcd_results['mcd']:.2f}")
+print(f"F0 Correlation: {mcd_results['f0_corr']:.3f}")
+print(f"F0 RMSE: {mcd_results['f0_rmse']:.2f}")
+
+# 4. Subjective quality predictors
+print("\n[MOS Predictors]")
+mos_config = {
+    'predictor_types': ['utmos', 'dnsmos'],
+    'predictor_args': {
+        'utmos': {'fs': sr},
+        'dnsmos': {'fs': sr}
+    }
+}
+mos_models = pseudo_mos_setup(mos_config, use_gpu=True)
+mos_scores = pseudo_mos_metric(pred_audio, sr, mos_models)
+for metric, score in mos_scores.items():
+    print(f"{metric.upper()}: {score:.3f}")
+
+# 5. Speaker similarity
+print("\n[Speaker Similarity]")
+spk_model = speaker_model_setup('default', use_gpu=True)
+spk_sim = speaker_metric(pred_audio, ref_audio, spk_model)
+print(f"Speaker Similarity: {spk_sim:.3f}")
+
+print("\n" + "=" * 60)
+```
+
+## Batch Processing
+
+Process multiple files efficiently:
+
+```python
+import soundfile as sf
+from pathlib import Path
+from tqdm import tqdm
+import json
+from versa import (
+    pesq_metric,
+    stoi_metric,
+    pseudo_mos_setup,
+    pseudo_mos_metric
+)
+
+# Setup models once
+mos_config = {
+    'predictor_types': ['utmos'],
+    'predictor_args': {'utmos': {'fs': 16000}}
+}
+mos_models = pseudo_mos_setup(mos_config, use_gpu=True)
+
+# Process files
+pred_dir = Path('predicted/')
+ref_dir = Path('reference/')
+results = []
+
+for pred_file in tqdm(list(pred_dir.glob('*.wav'))):
+    ref_file = ref_dir / pred_file.name
+    
+    if not ref_file.exists():
+        continue
+    
+    # Load audio
+    pred, sr = sf.read(pred_file)
+    ref, _ = sf.read(ref_file)
+    
+    # Compute metrics
+    result = {
+        'file': pred_file.name,
+        'pesq': float(pesq_metric(pred, ref, sr)),
+        'stoi': float(stoi_metric(pred, ref, sr)),
+    }
+    
+    # Add MOS predictions
+    mos_scores = pseudo_mos_metric(pred, sr, mos_models)
+    result.update(mos_scores)
+    
+    results.append(result)
+
+# Save results
+with open('evaluation_results.jsonl', 'w') as f:
+    for result in results:
+        f.write(json.dumps(result) + '\n')
+
+print(f"Processed {len(results)} files")
+```
+
+## Using Scorer Shared Functions
+
+For advanced workflows, use the internal scoring functions:
+
+```python
+import yaml
+from versa.scorer_shared import (
+    audio_loader_setup,
+    load_score_modules,
+    list_scoring,
+    load_summary
+)
+
+# Load configuration
+with open('egs/speech.yaml', 'r') as f:
+    score_config = yaml.full_load(f)
+
+# Setup audio loaders
+gen_files = audio_loader_setup('pred.scp', io='soundfile')
+gt_files = audio_loader_setup('gt.scp', io='soundfile')
+
+# Load score modules
+score_modules = load_score_modules(
+    score_config,
+    use_gt=True,
+    use_gt_text=False,
+    use_gpu=True
+)
+
+# Run scoring
+score_info = list_scoring(
+    gen_files,
+    score_modules,
+    gt_files,
+    text_info=None,
+    output_file='results.jsonl',
+    io='soundfile'
+)
+
+# Print summary
+summary = load_summary(score_info)
+print(f"Summary: {summary}")
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Reuse Models" icon="recycle">
+    Setup models once and reuse them for batch processing to avoid repeated loading overhead.
+  </Card>
+  
+  <Card title="GPU Acceleration" icon="microchip">
+    Use `use_gpu=True` when setting up neural models for significantly faster inference.
+  </Card>
+  
+  <Card title="Error Handling" icon="shield">
+    Wrap metric calls in try-except blocks when processing diverse audio files that may have different formats or sample rates.
+  </Card>
+  
+  <Card title="Save Results" icon="save">
+    Save results in JSONL format for easy analysis with `scripts/show_result.py`.
+  </Card>
+</CardGroup>
+
+<Tip>
+For large-scale evaluation, consider using the [distributed evaluation](/guides/distributed-evaluation) approach with Slurm instead of the Python API.
+</Tip>
+
+## Next Steps
+
+- Explore [CLI usage](/guides/cli-usage) for command-line workflows
+- Learn about [distributed evaluation](/guides/distributed-evaluation) for large datasets
+- Check [visualization tools](/guides/visualization) for result analysis

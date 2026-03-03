@@ -1,0 +1,586 @@
+---
+title: 'Troubleshooting'
+description: 'Common issues and solutions for VERSA installation and usage'
+---
+
+## Installation Issues
+
+### Metrics Requiring Manual Installation
+
+Some metrics are not included in the default VERSA installation and require additional setup. Check the Auto-Install column in the [Supported Metrics](/metrics/supported-metrics) documentation.
+
+<AccordionGroup>
+  <Accordion title="UTMOSv2: UTokyo-SaruLab MOS Prediction System">
+    **Error:** `utmosv2 is not installed`
+
+    **Solution:**
+    ```bash
+    ./tools/install_utmosv2.sh
+    ```
+
+    **Additional requirements:**
+    - Git LFS must be installed and configured
+    - If you get `_pickle.UnpicklingError: invalid load key, 'v'.`, install Git LFS:
+
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get install git-lfs
+    git lfs install
+
+    # macOS
+    brew install git-lfs
+    git lfs install
+
+    # Then re-clone or re-pull the model
+    rm -rf ~/.cache/torch/hub/checkpoints/utmosv2*
+    ./tools/install_utmosv2.sh
+    ```
+
+    **Reference:** [UTMOSv2 GitHub](https://github.com/sarulab-speech/UTMOSv2)
+  </Accordion>
+
+  <Accordion title="ScoreQ: Speech Contrastive Regression for Quality Assessment">
+    **No Auto-Install:** Requires manual installation for both reference and no-reference versions
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/ftshijt/scoreq.git
+    cd scoreq
+    pip install -e .
+    ```
+
+    **Config keys:**
+    - `scoreq_nr` - No-reference version
+    - `scoreq_ref` - With-reference version
+
+    **Reference:** [ScoreQ Paper](https://arxiv.org/pdf/2410.06675)
+  </Accordion>
+
+  <Accordion title="SRMR: Speech-to-Reverberation Modulation energy Ratio">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/shimhz/SRMRpy.git
+    cd SRMRpy
+    pip install -e .
+    ```
+
+    **Reference:** [SRMR Paper](http://www.individual.utoronto.ca/falkt/falk/pdf/FalkChan_TASLP2010.pdf)
+  </Accordion>
+
+  <Accordion title="Audiobox Aesthetics">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/facebookresearch/audiobox-aesthetics.git
+    cd audiobox-aesthetics
+    pip install -e .
+    ```
+
+    **Returns multiple scores:**
+    - `audiobox_aesthetics_CE` - Clarity/Engagement
+    - `audiobox_aesthetics_CU` - Consonant Understanding
+    - `audiobox_aesthetics_PC` - Pitch Contour
+    - `audiobox_aesthetics_PQ` - Prosody Quality
+
+    **Reference:** [Audiobox Paper](https://arxiv.org/abs/2502.05139)
+  </Accordion>
+
+  <Accordion title="Uni-VERSA and ARECHO">
+    **No Auto-Install:** Advanced multi-modal assessment models
+
+    **Solution:**
+    ```bash
+    # Install from HuggingFace
+    pip install transformers torch
+    ```
+
+    **Available variants:**
+    - `universa_noref` - No reference
+    - `universa_audioref` - With audio reference
+    - `universa_textref` - With text reference
+    - `universa_fullref` - With both audio and text reference
+    - `arecho_noref` - Echo cancellation and codec quality (no reference)
+    - `arecho_audioref` - With audio reference
+    - `arecho_textref` - With text reference
+    - `arecho_fullref` - With full reference
+
+    **Reference:** [Uni-VERSA Collection](https://huggingface.co/collections/espnet/universa-6834e7c0a28225bffb6e2526)
+  </Accordion>
+
+  <Accordion title="WV-MOS: MOS prediction by fine-tuned wav2vec2.0">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    pip install git+https://github.com/AndreevP/wvmos.git
+    ```
+
+    **Reference:** [WV-MOS Paper](https://arxiv.org/abs/2203.13086)
+  </Accordion>
+
+  <Accordion title="SIG-MOS: Multi-dimensional MOS prediction">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/microsoft/SIG-Challenge.git
+    cd SIG-Challenge/ICASSP2024/sigmos
+    pip install -e .
+    ```
+
+    **Returns multiple scores:**
+    - `SIGMOS_COL` - Coloration
+    - `SIGMOS_DISC` - Discontinuity
+    - `SIGMOS_LOUD` - Loudness
+    - `SIGMOS_REVERB` - Reverberation
+    - `SIGMOS_SIG` - Signal quality
+    - `SIGMOS_OVRL` - Overall quality
+
+    **Reference:** [SIG-MOS Paper](https://arxiv.org/pdf/2309.07385)
+  </Accordion>
+
+  <Accordion title="Emotion2vec Similarity">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    pip install git+https://github.com/ftshijt/emotion2vec.git
+    ```
+
+    **Reference:** [Emotion2vec Paper](https://arxiv.org/abs/2312.15185)
+  </Accordion>
+
+  <Accordion title="NOMAD: Perceptual Embeddings for Speech Enhancement">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/shimhz/nomad.git
+    cd nomad
+    pip install -e .
+    ```
+
+    **Reference:** [NOMAD Paper](https://arxiv.org/abs/2309.16284)
+  </Accordion>
+
+  <Accordion title="CLAP Score: Contrastive Language-Audio Pretraining">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    pip install git+https://github.com/gudgud96/frechet-audio-distance.git
+    ```
+
+    **Reference:** [CLAP Paper](https://arxiv.org/abs/2301.12661)
+  </Accordion>
+
+  <Accordion title="APA: Accompaniment Prompt Adherence">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/SonyCSLParis/audio-metrics.git
+    cd audio-metrics
+    pip install -e .
+    ```
+
+    **Reference:** [APA Paper](https://arxiv.org/abs/2404.00775)
+  </Accordion>
+
+  <Accordion title="VISQOL: Virtual Speech Quality Objective Listener">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    # Requires Google's VISQOL implementation
+    git clone https://github.com/google/visqol.git
+    cd visqol
+    # Follow build instructions in repository
+    ```
+
+    **Reference:** [VISQOL Paper](https://arxiv.org/abs/2004.09584)
+  </Accordion>
+
+  <Accordion title="WARP-Q: Dynamic Time Warping Cost Metric">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/wjassim/WARP-Q.git
+    cd WARP-Q
+    pip install -e .
+    ```
+
+    **Reference:** [WARP-Q Paper](https://arxiv.org/abs/2102.10449)
+  </Accordion>
+
+  <Accordion title="NORESQA: Non-Matching Reference Speech Quality Assessment">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/shimhz/Noresqa.git
+    cd Noresqa
+    pip install -e .
+    ```
+
+    **Reference:** [NORESQA Paper](https://proceedings.neurips.cc/paper/2021/file/bc6d753857fe3dd4275dff707dedf329-Paper.pdf)
+  </Accordion>
+
+  <Accordion title="Distributional Metrics: FAD, KL Divergence, Density, Coverage">
+    **No Auto-Install:** Require full corpus for computation
+
+    **Solution:**
+    ```bash
+    # FAD and related metrics
+    pip install git+https://github.com/microsoft/fadtk.git
+
+    # Audio density and coverage
+    git clone https://github.com/SonyCSLParis/audio-metrics.git
+    cd audio-metrics
+    pip install -e .
+
+    # KL divergence
+    pip install git+https://github.com/Stability-AI/stable-audio-metrics.git
+    ```
+
+    **Available metrics:**
+    - `fad` - Frechet Audio Distance
+    - `kl_embedding` - KL Divergence on embeddings
+    - `audio_density` - Audio Density Score
+    - `audio_coverage` - Audio Coverage Score
+  </Accordion>
+
+  <Accordion title="PySepm Metrics: FWSEGSNR, WSS, CD, Composite, CSII, NCM, LLR">
+    **No Auto-Install**
+
+    **Solution:**
+    ```bash
+    git clone https://github.com/shimhz/pysepm.git
+    cd pysepm
+    pip install -e .
+    ```
+
+    **Available metrics:**
+    - `pysepm_fwsegsnr` - Frequency-Weighted Segmental SNR
+    - `pysepm_wss` - Weighted Spectral Slope
+    - `pysepm_cd` - Cepstrum Distance
+    - `pysepm_Csig`, `pysepm_Cbak`, `pysepm_Covl` - Composite measures
+    - `pysepm_csii_high`, `pysepm_csii_mid`, `pysepm_csii_low` - CSII
+    - `pysepm_ncm` - Normalized-covariance measure
+    - `pysepm_llr` - Log Likelihood Ratio
+
+    **Reference:** [PySepm Paper](https://ecs.utdallas.edu/loizou/speech/obj_paper_jan08.pdf)
+  </Accordion>
+</AccordionGroup>
+
+## Dependency Conflicts
+
+<Warning>
+  Some metrics require specific package versions that may conflict with other dependencies.
+</Warning>
+
+### Recommended Approach: Virtual Environments
+
+Create separate environments for conflicting metrics:
+
+```bash
+# Main VERSA environment
+conda create -n versa python=3.9
+conda activate versa
+pip install versa-speech-eval
+
+# Separate environment for specific metrics
+conda create -n versa-utmosv2 python=3.9
+conda activate versa-utmosv2
+pip install versa-speech-eval
+./tools/install_utmosv2.sh
+```
+
+### ONNX Runtime Issues
+
+If metrics using ONNX Runtime (DNSMOS, PLCMOS) fail:
+
+```bash
+pip uninstall onnxruntime onnxruntime-gpu
+pip install onnxruntime==1.15.0  # Try specific version
+```
+
+## Runtime Errors
+
+### GPU Out of Memory
+
+```python
+RuntimeError: CUDA out of memory
+```
+
+**Solutions:**
+
+<Steps>
+  <Step title="Reduce batch size">
+    Process fewer files at once or use single-file processing mode.
+  </Step>
+
+  <Step title="Use CPU fallback">
+    Set `use_gpu: false` in your configuration:
+
+    ```yaml
+    score:
+      - name: pseudo_mos
+        predictor: utmos
+        use_gpu: false
+    ```
+  </Step>
+
+  <Step title="Clear GPU cache">
+    ```python
+    import torch
+    torch.cuda.empty_cache()
+    ```
+  </Step>
+
+  <Step title="Use mixed metrics">
+    Run GPU-intensive metrics separately from CPU metrics to avoid loading all models simultaneously.
+  </Step>
+</Steps>
+
+### Sample Rate Mismatches
+
+```python
+ValueError: Sample rate mismatch
+```
+
+Most metrics automatically resample, but some require specific sample rates:
+
+- **16 kHz**: UTMOS, speaker similarity, Whisper WER, OWSM WER
+- **48 kHz**: Some professional audio metrics
+- **Flexible**: PESQ, STOI (but performance varies)
+
+**Solution:**
+
+Pre-resample your audio files:
+
+```python
+import librosa
+import soundfile as sf
+
+audio, sr = librosa.load('input.wav', sr=None)
+audio_16k = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+sf.write('output_16k.wav', audio_16k, 16000)
+```
+
+### Missing Model Checkpoints
+
+```python
+FileNotFoundError: Model checkpoint not found
+```
+
+**Solution:**
+
+Clear cache and re-download:
+
+```bash
+rm -rf ~/.cache/torch/hub
+rm -rf versa_cache/
+
+# Re-run your evaluation to trigger download
+python -m versa.bin.score --config config.yaml ...
+```
+
+### Import Errors
+
+```python
+ModuleNotFoundError: No module named 'X'
+```
+
+**Solution:**
+
+Verify installation:
+
+```bash
+pip list | grep versa
+pip install --upgrade versa-speech-eval
+```
+
+For development installation:
+
+```bash
+cd versa
+pip install -e .
+```
+
+## Data Format Issues
+
+### wav.scp Format
+
+VERSA expects Kaldi-style wav.scp format:
+
+```
+utterance_001 /path/to/audio1.wav
+utterance_002 /path/to/audio2.wav
+utterance_003 /path/to/audio3.flac
+```
+
+<Note>
+  - Each line: `<utterance_id> <absolute_or_relative_path>`
+  - Supported formats: WAV, FLAC, MP3, OGG
+  - Paths should not end with pipe `|` unless using Kaldi I/O
+</Note>
+
+**Common mistakes:**
+
+```bash
+# Wrong: No utterance ID
+/path/to/audio1.wav
+
+# Wrong: Multiple spaces or tabs (use single space)
+utterance_001    /path/to/audio1.wav
+
+# Correct
+utterance_001 /path/to/audio1.wav
+```
+
+### Text File Format
+
+For text-dependent metrics (WER, text-based assessment):
+
+```
+utterance_001 This is the transcription for audio one.
+utterance_002 Another transcription here.
+utterance_003 Make sure utterance IDs match wav.scp exactly.
+```
+
+### Mismatched Utterance IDs
+
+```python
+KeyError: 'utterance_001'
+```
+
+Ensure utterance IDs match across all files:
+
+```bash
+# Check IDs in prediction file
+cut -d' ' -f1 pred.scp | sort > pred_ids.txt
+
+# Check IDs in ground truth file
+cut -d' ' -f1 gt.scp | sort > gt_ids.txt
+
+# Check IDs in text file
+cut -d' ' -f1 text.txt | sort > text_ids.txt
+
+# Compare
+diff pred_ids.txt gt_ids.txt
+```
+
+## Performance Issues
+
+### Slow Processing
+
+<Steps>
+  <Step title="Enable GPU acceleration">
+    ```yaml
+    score:
+      - name: pseudo_mos
+        use_gpu: true
+    ```
+  </Step>
+
+  <Step title="Use parallel processing">
+    See [Slurm Integration](/advanced/slurm-integration) for cluster-based parallelization.
+  </Step>
+
+  <Step title="Reduce metric count">
+    Run only essential metrics in your initial evaluation:
+
+    ```yaml
+    score:
+      # Start with fast, essential metrics
+      - name: pseudo_mos
+        predictor: utmos
+      - name: pesq
+      # Add more later as needed
+    ```
+  </Step>
+
+  <Step title="Cache models">
+    Set cache directory to persistent location:
+
+    ```bash
+    export TORCH_HOME=/path/to/persistent/cache
+    ```
+  </Step>
+</Steps>
+
+## Configuration Issues
+
+### Invalid YAML Syntax
+
+```yaml
+YAMLError: mapping values are not allowed here
+```
+
+**Common issues:**
+
+```yaml
+# Wrong: Missing space after colon
+score:
+  - name:pseudo_mos
+
+# Correct
+score:
+  - name: pseudo_mos
+```
+
+```yaml
+# Wrong: Inconsistent indentation
+score:
+  - name: pseudo_mos
+   predictor: utmos  # Should align with 'name'
+
+# Correct
+score:
+  - name: pseudo_mos
+    predictor: utmos
+```
+
+### Metric Not Found
+
+```python
+KeyError: 'my_metric' not found in available metrics
+```
+
+Verify metric name in `versa/scorer_shared.py` and that it's properly registered.
+
+Available metrics are listed in [Supported Metrics](/metrics/supported-metrics).
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/wavlab-speech/versa/issues">
+    Report bugs and request features
+  </Card>
+
+  <Card title="Documentation" icon="book" href="/introduction">
+    Review guides and API reference
+  </Card>
+
+  <Card title="Example Configs" icon="code" href="https://github.com/wavlab-speech/versa/tree/main/egs">
+    Browse working configuration examples
+  </Card>
+
+  <Card title="Contributing Guide" icon="code-pull-request" href="https://github.com/wavlab-speech/versa/blob/main/docs/contributing.md">
+    Learn how to contribute fixes
+  </Card>
+</CardGroup>
+
+<Tip>
+  When reporting issues, include:
+  - VERSA version: `pip show versa-speech-eval`
+  - Python version: `python --version`
+  - Operating system and GPU type (if using GPU)
+  - Complete error traceback
+  - Minimal configuration file that reproduces the issue
+</Tip>
