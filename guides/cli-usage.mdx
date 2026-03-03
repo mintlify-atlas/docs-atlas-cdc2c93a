@@ -5,12 +5,26 @@ description: Complete guide to using VERSA's command-line interface
 
 VERSA provides a powerful command-line interface through `scorer.py` for evaluating speech and audio quality. This guide covers all CLI options and usage patterns.
 
+<Info>
+  After installation, you can use either `versa-score` (installed command) or `python versa/bin/scorer.py` (direct script). This guide uses the direct script syntax for clarity.
+</Info>
+
 ## Basic Usage
 
 The basic syntax for running VERSA from the command line:
 
 ```bash
 python versa/bin/scorer.py \
+    --score_config egs/speech.yaml \
+    --pred test/test_samples/test2.scp \
+    --gt test/test_samples/test1.scp \
+    --output_file results/test_result
+```
+
+Or using the installed command:
+
+```bash
+versa-score \
     --score_config egs/speech.yaml \
     --pred test/test_samples/test2.scp \
     --gt test/test_samples/test1.scp \
