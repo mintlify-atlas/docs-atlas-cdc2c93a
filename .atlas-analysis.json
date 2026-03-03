@@ -1,0 +1,126 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "VERSA",
+  "projectDescription": "Comprehensive toolkit for evaluating speech and audio quality with 90+ metrics",
+  "theme": "aspen",
+  "primaryColor": "#8B5CF6",
+  "lightColor": "#A78BFA",
+  "darkColor": "#6D28D9",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/metric-types",
+              "concepts/configuration",
+              "concepts/input-formats"
+            ]
+          },
+          {
+            "group": "Usage Guides",
+            "pages": [
+              "guides/cli-usage",
+              "guides/python-api",
+              "guides/distributed-evaluation",
+              "guides/visualization"
+            ]
+          },
+          {
+            "group": "Metrics Reference",
+            "pages": [
+              "metrics/overview",
+              "metrics/independent",
+              "metrics/dependent",
+              "metrics/non-match",
+              "metrics/distributional"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/custom-metrics",
+              "advanced/slurm-integration",
+              "advanced/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/scorer",
+              "api/metrics",
+              "api/utils"
+            ]
+          },
+          {
+            "group": "Utterance Metrics",
+            "pages": [
+              "api/utterance/pseudo-mos",
+              "api/utterance/nisqa",
+              "api/utterance/pesq-stoi",
+              "api/utterance/speaker-emotion",
+              "api/utterance/qwen2-audio"
+            ]
+          },
+          {
+            "group": "Sequence Metrics",
+            "pages": [
+              "api/sequence/mcd-f0",
+              "api/sequence/signal-metrics"
+            ]
+          },
+          {
+            "group": "Corpus Metrics",
+            "pages": [
+              "api/corpus/wer",
+              "api/corpus/fad"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "90+ evaluation metrics covering perceptual quality, intelligibility, and technical measurements",
+    "Support for multiple input formats (file paths, SCP files, Kaldi-style ARKs)",
+    "Built-in distributed evaluation with Slurm integration",
+    "Interactive visualization and result analysis tools",
+    "Seamless integration with ESPnet and other speech toolkits",
+    "Flexible configuration system with YAML-based metric selection"
+  ],
+  "publicApiSurface": [
+    "versa.bin.scorer.main",
+    "versa.scorer_shared.load_score_modules",
+    "versa.scorer_shared.load_corpus_modules",
+    "versa.scorer_shared.list_scoring",
+    "versa.scorer_shared.corpus_scoring",
+    "versa.sequence_metrics.mcd_f0.mcd_f0",
+    "versa.sequence_metrics.signal_metric.signal_metric",
+    "versa.utterance_metrics.pseudo_mos.pseudo_mos_metric",
+    "versa.utterance_metrics.pseudo_mos.pseudo_mos_setup",
+    "versa.utterance_metrics.pesq_score.pesq_metric",
+    "versa.utterance_metrics.stoi.stoi_metric",
+    "versa.utterance_metrics.nisqa.nisqa_metric",
+    "versa.utterance_metrics.speaker.speaker_metric",
+    "versa.utterance_metrics.qwen2_audio.qwen2_model_setup",
+    "versa.corpus_metrics.espnet_wer.espnet_levenshtein_metric",
+    "versa.corpus_metrics.owsm_wer.owsm_levenshtein_metric",
+    "versa.corpus_metrics.whisper_wer.whisper_levenshtein_metric",
+    "versa.corpus_metrics.fad.fad_scoring"
+  ]
+}
